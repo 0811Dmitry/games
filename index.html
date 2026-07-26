@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Мастерская игр</title>
+<style>
+  /* Deliberately single-theme: this is a fixed "arcade cabinet at night" world,
+     the same fixed dark palette the games themselves use — not an oversight. */
+  :root {
+    --bg: #150c2b;
+    --bg-soft: #1b1035;
+    --card: #241a45;
+    --card-line: rgba(255,255,255,.12);
+    --yellow: #ffd23f;
+    --red: #e0522d;
+    --blue: #5aa9e6;
+    --green: #7bc142;
+    --ink: #fdf6e8;
+    --ink-dim: #b6a7d6;
+    --font-display: 'Courier New', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --font-body: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+  }
+
+  body {
+    background-image:
+      radial-gradient(ellipse at 20% -10%, rgba(255,210,63,.08), transparent 55%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0px, rgba(255,255,255,.025) 1px, transparent 1px, transparent 3px);
+    min-height: 100vh;
+  }
+
+  a { color: inherit; }
+
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 48px 24px 64px;
+  }
+
+  header {
+    text-align: center;
+    padding-bottom: 40px;
+  }
+
+  @keyframes bounceTitle {
+    0%, 100% { transform: translateY(0) rotate(-1deg); }
+    50%      { transform: translateY(-8px) rotate(1deg); }
+  }
+
+  h1.wordmark {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(2.1rem, 6vw, 3.6rem);
+    letter-spacing: .03em;
+    margin: 0 0 10px;
+    color: var(--yellow);
+    text-shadow: 4px 4px 0 var(--red), -2px -2px 0 var(--bg-soft);
+    animation: bounceTitle 1.8s ease-in-out infinite;
+    text-wrap: balance;
+  }
+
+  .tagline {
+    color: var(--ink-dim);
+    font-size: 1.05rem;
+    max-width: 46ch;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  .count {
+    font-family: var(--font-display);
+    font-size: .78rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-top: 18px;
+  }
+
+  .games {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    gap: 28px;
+  }
+
+  .cartridge {
+    background: var(--card);
+    border: 3px solid var(--card-line);
+    border-radius: 10px 10px 4px 4px;
+    box-shadow: 7px 7px 0 rgba(0,0,0,.35);
+    padding: 0 20px 20px;
+    transform: rotate(-0.6deg);
+    transition: transform .15s ease;
+  }
+  .cartridge:nth-child(even) { transform: rotate(0.7deg); }
+  .cartridge:hover { transform: translateY(-4px) rotate(0deg); }
+
+  .label {
+    margin: 0 -20px 16px;
+    padding: 10px 20px;
+    background: var(--accent, var(--red));
+    border-radius: 7px 7px 0 0;
+    transform: rotate(-0.4deg);
+  }
+
+  .label h2 {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    letter-spacing: .02em;
+    margin: 0;
+    color: #150c2b;
+    text-shadow: 1px 1px 0 rgba(255,255,255,.25);
+  }
+
+  .blurb {
+    color: var(--ink);
+    font-size: .95rem;
+    line-height: 1.55;
+    margin: 0 0 14px;
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 18px;
+  }
+  .tag {
+    font-family: var(--font-display);
+    font-size: .68rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    border: 1px solid var(--card-line);
+    border-radius: 5px;
+    padding: 3px 8px;
+  }
+
+  .play-btn {
+    display: inline-block;
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 1rem;
+    text-decoration: none;
+    padding: 10px 22px;
+    background: var(--accent, var(--red));
+    color: #150c2b;
+    border: 3px solid var(--yellow);
+    border-radius: 8px;
+    box-shadow: 0 5px 0 rgba(0,0,0,.35);
+    transition: transform .05s;
+  }
+  .play-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 rgba(0,0,0,.35);
+  }
+
+  .cartridge.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 180px;
+    border: 3px dashed var(--card-line);
+    box-shadow: none;
+    background: transparent;
+    color: var(--ink-dim);
+    font-size: .92rem;
+    line-height: 1.6;
+    padding: 20px;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--ink-dim);
+    font-size: .85rem;
+    margin-top: 56px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    h1.wordmark { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1 class="wordmark">МАСТЕРСКАЯ ИГР</h1>
+    <p class="tagline">Придумываем игру, делаем вместе, играем — и если получилось прикольно, публикуем сюда.</p>
+    <div class="count">В коллекции: 1 игра</div>
+  </header>
+
+  <div class="games">
+
+    <div class="cartridge">
+      <div class="label" style="--accent: var(--red);">
+        <h2>ПЕРДОБЕГ</h2>
+      </div>
+      <p class="blurb">Курьер на самокате развозит заказы по городу: машины на дорогах, извилистые тропинки через газоны, рампа для трюков и горох, от которого можно разогнаться самым весёлым способом.</p>
+      <div class="tags">
+        <span class="tag">Курьер</span>
+        <span class="tag">Машины</span>
+        <span class="tag">Трюки</span>
+        <span class="tag">Мобилка</span>
+      </div>
+      <a class="play-btn" href="games/perdobeg/">ИГРАТЬ →</a>
+    </div>
+
+    <div class="cartridge empty">Следующая игра появится здесь</div>
+
+  </div>
+
+  <footer>Придумано и собрано вместе с папой 🎮</footer>
+
+</div>
+</body>
+</html>
