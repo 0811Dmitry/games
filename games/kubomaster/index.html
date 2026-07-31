@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>КУБОМАСТЕР — таблица умножения</title>
+<style>
+  :root {
+    --bg: #12203a;
+    --bg-soft: #1a2c4e;
+    --panel: #223a63;
+    --line: rgba(255,255,255,.14);
+    --ink: #f4f8ff;
+    --ink-dim: #9fb3d8;
+    --yellow: #ffd23f;
+    --red: #e84f3d;
+    --blue: #4da3ff;
+    --green: #58c14b;
+    --orange: #ff9f2e;
+    --font-display: 'Courier New', ui-monospace, Menlo, monospace;
+    --font-body: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); }
+  body {
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 50% -10%, rgba(77,163,255,.12), transparent 55%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.02) 0 1px, transparent 1px 3px);
+  }
+  button { font-family: inherit; }
+
+  .screen { display: none; max-width: 760px; margin: 0 auto; padding: 20px 16px 40px; }
+  .screen.on { display: block; }
+
+  /* ===== Меню ===== */
+  h1.logo {
+    font-family: var(--font-display);
+    font-size: clamp(1.7rem, 7vw, 3rem);
+    text-align: center;
+    color: var(--yellow);
+    text-shadow: 3px 3px 0 var(--red);
+    margin: 10px 0 4px;
+    letter-spacing: .04em;
+  }
+  .sub { text-align: center; color: var(--ink-dim); margin: 0 0 20px; line-height: 1.5; }
+
+  .levels { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 14px; }
+  .lvl {
+    background: var(--panel);
+    border: 3px solid var(--line);
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    text-align: left;
+    color: var(--ink);
+    display: flex; gap: 12px; align-items: center;
+    box-shadow: 0 5px 0 rgba(0,0,0,.3);
+    transition: transform .08s;
+  }
+  .lvl:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
+  .lvl .mini { flex: 0 0 auto; }
+  .lvl .info { min-width: 0; }
+  .lvl .num { font-family: var(--font-display); font-size: 1.15rem; color: var(--yellow); }
+  .lvl .model-name { font-size: .85rem; color: var(--ink-dim); }
+  .lvl .star { margin-left: auto; font-size: 1.3rem; }
+  .lvl.locked { opacity: .55; cursor: not-allowed; }
+  .lvl.mix { grid-column: 1 / -1; border-color: var(--yellow); }
+  .lock-hint { font-size: .78rem; color: var(--ink-dim); }
+
+  .opts {
+    margin: 20px auto 0; max-width: 480px;
+    background: var(--bg-soft); border: 2px dashed var(--line); border-radius: 12px;
+    padding: 12px 16px; display: flex; align-items: flex-start; gap: 10px;
+    font-size: .92rem; line-height: 1.45; color: var(--ink-dim); cursor: pointer;
+  }
+  .opts input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--yellow); }
+
+  /* ===== Игра ===== */
+  .hud { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .back-btn {
+    background: var(--panel); color: var(--ink); border: 2px solid var(--line);
+    border-radius: 8px; padding: 6px 12px; font-size: 1rem; cursor: pointer;
+  }
+  .hud .lvl-name { font-family: var(--font-display); font-size: .95rem; color: var(--yellow); }
+  .hud .parts { margin-left: auto; font-size: .9rem; color: var(--ink-dim); }
+
+  .build-zone {
+    background: var(--bg-soft);
+    border: 3px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 8px;
+    display: flex; justify-content: center;
+    min-height: 160px;
+  }
+  .brick-grid { display: grid; gap: 2px; }
+  .cell { border-radius: 3px; position: relative; }
+  .cell.ghost { border: 1px dashed rgba(255,255,255,.13); }
+  .cell.brick {
+    box-shadow: inset -2px -3px 0 rgba(0,0,0,.28), inset 2px 2px 0 rgba(255,255,255,.22);
+  }
+  .cell.brick::after {
+    content: ""; position: absolute; left: 26%; top: 20%; width: 48%; height: 34%;
+    border-radius: 50%;
+    background: rgba(255,255,255,.22);
+    box-shadow: 0 2px 0 rgba(0,0,0,.18);
+  }
+  @keyframes popIn { 0% { transform: scale(0) rotate(20deg); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
+  .cell.pop { animation: popIn .35s ease-out both; }
+  @keyframes crumble {
+    to { transform: translateY(65vh) rotate(var(--spin)) translateX(var(--drift)); opacity: 0; }
+  }
+  .cell.fall { animation: crumble .9s ease-in both; }
+
+  .question {
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 9vw, 3.2rem);
+    margin: 18px 0 14px;
+    letter-spacing: .04em;
+  }
+  .question .q-mark { color: var(--yellow); }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+  .question.shake { animation: shake .3s ease; }
+
+  .answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 460px; margin: 0 auto; }
+  .ans {
+    position: relative;
+    border: none; border-radius: 10px;
+    padding: 22px 10px 14px;
+    font-size: 1.7rem; font-weight: 800; color: #10203c;
+    cursor: pointer;
+    box-shadow: inset -3px -5px 0 rgba(0,0,0,.25), inset 3px 3px 0 rgba(255,255,255,.3), 0 5px 0 rgba(0,0,0,.35);
+    transition: transform .06s;
+  }
+  .ans:active { transform: translateY(4px); box-shadow: inset -3px -5px 0 rgba(0,0,0,.25), inset 3px 3px 0 rgba(255,255,255,.3), 0 1px 0 rgba(0,0,0,.35); }
+  .ans::before, .ans::after {
+    content: ""; position: absolute; top: 6px; width: 24%; height: 10px; border-radius: 4px;
+    background: rgba(255,255,255,.3); box-shadow: 0 2px 0 rgba(0,0,0,.15);
+  }
+  .ans::before { left: 14%; }
+  .ans::after { right: 14%; }
+  .ans.c0 { background: var(--red); }
+  .ans.c1 { background: var(--blue); }
+  .ans.c2 { background: var(--green); }
+  .ans.c3 { background: var(--yellow); }
+  .ans:disabled { cursor: default; }
+
+  .progress-track {
+    max-width: 460px; margin: 16px auto 0; height: 12px;
+    background: var(--bg-soft); border: 2px solid var(--line); border-radius: 8px; overflow: hidden;
+  }
+  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--green), var(--yellow)); transition: width .4s; }
+
+  /* ===== Оверлеи ===== */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(10,16,30,.86);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 10;
+  }
+  .overlay.on { display: flex; }
+  .card {
+    background: var(--panel); border: 3px solid var(--line); border-radius: 16px;
+    max-width: 420px; width: 100%; padding: 26px 22px; text-align: center;
+    box-shadow: 0 10px 0 rgba(0,0,0,.4);
+  }
+  .card h2 { font-family: var(--font-display); margin: 0 0 10px; font-size: 1.5rem; }
+  .card.fail h2 { color: var(--red); }
+  .card.win h2 { color: var(--green); }
+  .card p { color: var(--ink-dim); line-height: 1.5; margin: 0 0 8px; }
+  .card .formula { font-family: var(--font-display); font-size: 1.6rem; color: var(--yellow); margin: 10px 0 16px; }
+  .big-btn {
+    display: inline-block; border: 3px solid var(--yellow); border-radius: 10px;
+    background: var(--red); color: #fff; font-weight: 800; font-size: 1.1rem;
+    padding: 12px 26px; cursor: pointer; box-shadow: 0 5px 0 rgba(0,0,0,.35); margin: 4px;
+  }
+  .big-btn.alt { background: var(--panel); color: var(--ink); border-color: var(--line); }
+  .big-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 rgba(0,0,0,.35); }
+
+  .mini-grid { display: grid; gap: 1px; }
+  .mini-grid .mc { border-radius: 1px; }
+</style>
+</head>
+<body>
+
+<!-- ===== МЕНЮ ===== -->
+<div class="screen on" id="menu">
+  <h1 class="logo">КУБОМАСТЕР</h1>
+  <p class="sub">Реши примеры — и собери модель деталь за деталью.<br>
+  Ошибёшься — модель рассыпется, и уровень начнётся заново!</p>
+  <div class="levels" id="levels"></div>
+  <label class="opts">
+    <input type="checkbox" id="mixSostav">
+    <span><b>Подмешивать «состав числа»</b><br>Иногда будут попадаться примеры вида «6&nbsp;+&nbsp;?&nbsp;=&nbsp;13»</span>
+  </label>
+</div>
+
+<!-- ===== ИГРА ===== -->
+<div class="screen" id="game">
+  <div class="hud">
+    <button class="back-btn" id="backBtn">⟵ Меню</button>
+    <span class="lvl-name" id="lvlName"></span>
+    <span class="parts" id="partsLabel"></span>
+  </div>
+  <div class="build-zone"><div class="brick-grid" id="grid"></div></div>
+  <div class="question" id="question"></div>
+  <div class="answers" id="answers"></div>
+  <div class="progress-track"><div class="progress-fill" id="progress"></div></div>
+</div>
+
+<!-- ===== ПРОИГРЫШ ===== -->
+<div class="overlay" id="failOverlay">
+  <div class="card fail">
+    <h2>💥 БАБАХ!</h2>
+    <p>Деталь не подошла — модель рассыпалась!</p>
+    <p>Запомни:</p>
+    <div class="formula" id="failFormula"></div>
+    <button class="big-btn" id="retryBtn">🔧 Собрать заново</button>
+    <button class="big-btn alt" id="failMenuBtn">В меню</button>
+  </div>
+</div>
+
+<!-- ===== ПОБЕДА ===== -->
+<div class="overlay" id="winOverlay">
+  <div class="card win">
+    <h2>🏆 МОДЕЛЬ СОБРАНА!</h2>
+    <p id="winText"></p>
+    <div style="display:flex; justify-content:center; margin:12px 0;" id="winModel"></div>
+    <button class="big-btn" id="winMenuBtn">К выбору уровней</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ================= МОДЕЛИ (пиксель-арт из "деталей") ================= */
+/* Буква = цвет детали, точка = пусто. Собираются снизу вверх. */
+
+const PAL = {
+  K: '#2b2b33', S: '#9aa7b8', W: '#e8ecf2', R: '#e84f3d', B: '#2f7fe0',
+  L: '#8fd0ff', G: '#58c14b', Y: '#ffd23f', O: '#e8b02e', N: '#ff8b2e',
+  P: '#a44fd0', C: '#6b7686', D: '#174a9c'
+};
+
+const MODELS = {
+  moto: {
+    name: 'Мотоцикл',
+    art: [
+      '...........SS...',
+      '....RRR....S....',
+      '...RRRRR..SS....',
+      '..RRRRRRRRRS....',
+      '.RRRRRRRRRRR....',
+      '..KK..RRRR..KK..',
+      '.KSSK..RR..KSSK.',
+      '.KSSK......KSSK.',
+      '..KK........KK..'
+    ]
+  },
+  falcon: {
+    name: 'Сокол',
+    art: [
+      'W...............W',
+      'WW.....KKK.....WW',
+      '.WWW...KRK...WWW.',
+      '..WWWW.KKK.WWWW..',
+      '....WWRRRRRWW....',
+      '......RRRRR......',
+      '......SRRRS......',
+      '.......R.R.......',
+      '.......K.K.......'
+    ]
+  },
+  glove: {
+    name: 'Перчатка Таноса',
+    art: [
+      '.O.O.O.O...',
+      '.O.O.O.O...',
+      '.OOOOOOO.O.',
+      '.OOOOOOO.O.',
+      '.OOOOOOOOO.',
+      '.OPOBOGOO..',
+      '.OOOOOOOO..',
+      '.OYONORO...',
+      '..OOOOOO...',
+      '..OOOOO....',
+      '..OOOOO....'
+    ]
+  },
+  digger: {
+    name: 'Экскаватор',
+    art: [
+      '...........SS...',
+      '..........SS....',
+      '..NNNN...SS.....',
+      '..NLLN..SS......',
+      '.NNNNNNSS.......',
+      '.NNNNNNN.S......',
+      '.NNNNNNN..S.....',
+      '.KKKKKKK...CC...',
+      'KSKSKSKSK..CC...',
+      '.KKKKKKK..CCC...'
+    ]
+  },
+  robot: {
+    name: 'Большой синий робот',
+    art: [
+      '...BBBBB....',
+      '...BYBYB....',
+      '...BBBBB....',
+      '....DDD.....',
+      '.BBDDDDDBB..',
+      '.B.DLLLD.B..',
+      '.B.DLLLD.B..',
+      '.S.DDDDD.S..',
+      '...DDDDD....',
+      '...BB.BB....',
+      '...BB.BB....',
+      '..SSS.SSS...'
+    ]
+  },
+  racer: {
+    name: 'Гоночный болид',
+    art: [
+      '......GGGG......',
+      '.....GWWGG......',
+      '..GGGGGGGGGGG...',
+      '.GGGGGGGGGGGGG..',
+      '..KK..GGG..KK...',
+      '.KSSK.....KSSK..',
+      '..KK.......KK...'
+    ]
+  },
+  mega: {
+    name: 'МЕГА-РОБОТ',
+    art: [
+      '....YYYYYY....',
+      '....YBYYBY....',
+      '....YYYYYY....',
+      '......RR......',
+      '.RRRRRRRRRRR..',
+      'RR.RRRRRRR.RR.',
+      'RR.RBBBBR..RR.',
+      'GG.RBBBBR..GG.',
+      '...RRRRRR.....',
+      '...RRRRRR.....',
+      '...BB..BB.....',
+      '...BB..BB.....',
+      '...BB..BB.....',
+      '..KKK..KKK....'
+    ]
+  }
+};
+
+/* ================= УРОВНИ ================= */
+
+const LEVELS = [
+  { id: '2', label: 'Умножение на 2', table: 2, model: 'moto' },
+  { id: '3', label: 'Умножение на 3', table: 3, model: 'falcon' },
+  { id: '4', label: 'Умножение на 4', table: 4, model: 'glove' },
+  { id: '5', label: 'Умножение на 5', table: 5, model: 'digger' },
+  { id: '6', label: 'Умножение на 6', table: 6, model: 'robot' },
+  { id: '7', label: 'Умножение на 7', table: 7, model: 'racer' },
+  { id: 'mix', label: 'РАЗНОБОЙ', table: null, model: 'mega' }
+];
+
+/* ================= СОХРАНЕНИЯ ================= */
+
+const SAVE_KEY = 'kubomaster';
+function loadSave() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { return {}; }
+}
+function store(save) { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); }
+let save = loadSave();
+save.stars = save.stars || {};
+
+/* ================= ЗВУК ================= */
+
+let audioCtx = null;
+function beep(freq, dur, type, when, vol) {
+  if (!audioCtx) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, audioCtx.currentTime + when);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + when + dur);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(audioCtx.currentTime + when); o.stop(audioCtx.currentTime + when + dur);
+}
+function initAudio() {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+function sndSnap()  { beep(520, .07, 'square', 0, .12); beep(780, .09, 'square', .06, .12); }
+function sndCrash() { beep(300, .3, 'sawtooth', 0, .18); beep(180, .4, 'sawtooth', .08, .18); beep(90, .5, 'sawtooth', .16, .18); }
+function sndWin()   { [523, 659, 784, 1047].forEach((f, i) => beep(f, .18, 'square', i * .13, .14)); }
+
+/* ================= УТИЛИТЫ ================= */
+
+function rnd(n) { return Math.floor(Math.random() * n); }
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+/* ================= ВОПРОСЫ ================= */
+
+function makeMulQuestion(a, b) {
+  const ans = a * b;
+  const wrongs = new Set();
+  const cands = shuffle([(a + 1) * b, (a - 1) * b, a * (b + 1), a * (b - 1), ans + 1, ans - 1, ans + 2, ans - 2, a + b]);
+  for (const c of cands) {
+    if (wrongs.size >= 3) break;
+    if (c > 0 && c !== ans && !wrongs.has(c)) wrongs.add(c);
+  }
+  return { html: `${a} × ${b} = <span class="q-mark">?</span>`, plain: `${a} × ${b} = ${ans}`, answer: ans, options: shuffle([ans, ...wrongs]) };
+}
+
+function makeSostavQuestion() {
+  const sum = 8 + rnd(11);          // 8..18
+  const k = 2 + rnd(sum - 4);       // 2..sum-2
+  const ans = sum - k;
+  const wrongs = new Set();
+  const cands = shuffle([ans + 1, ans - 1, ans + 2, ans - 2, sum + k, ans + 3]);
+  for (const c of cands) {
+    if (wrongs.size >= 3) break;
+    if (c > 0 && c !== ans && !wrongs.has(c)) wrongs.add(c);
+  }
+  return { html: `${k} + <span class="q-mark">?</span> = ${sum}`, plain: `${k} + ${ans} = ${sum}`, answer: ans, options: shuffle([ans, ...wrongs]) };
+}
+
+function genQuestions(level) {
+  const qs = [];
+  if (level.table) {
+    const factors = shuffle([2, 3, 4, 5, 6, 7, 8, 9]);
+    factors.forEach(a => qs.push(makeMulQuestion(a, level.table)));
+    for (let i = 0; i < 2; i++) qs.push(makeMulQuestion(2 + rnd(8), level.table));
+  } else {
+    for (let i = 0; i < 12; i++) qs.push(makeMulQuestion(2 + rnd(8), 2 + rnd(6)));
+  }
+  if (document.getElementById('mixSostav').checked) {
+    for (let i = 0; i < 3; i++) qs.splice(1 + rnd(qs.length - 1), 0, makeSostavQuestion());
+  }
+  return qs;
+}
+
+/* ================= ОТРИСОВКА МОДЕЛИ ================= */
+
+function modelCells(model) {
+  // Ячейки в порядке сборки: снизу вверх, слева направо
+  const cells = [];
+  const art = model.art;
+  for (let y = art.length - 1; y >= 0; y--) {
+    for (let x = 0; x < art[y].length; x++) {
+      const ch = art[y][x];
+      if (ch !== '.') cells.push({ x, y, color: PAL[ch] || '#fff' });
+    }
+  }
+  return cells;
+}
+
+function renderMini(model, cellPx) {
+  const div = document.createElement('div');
+  div.className = 'mini-grid';
+  const art = model.art;
+  const w = Math.max(...art.map(r => r.length));
+  div.style.gridTemplateColumns = `repeat(${w}, ${cellPx}px)`;
+  for (const row of art) {
+    for (let x = 0; x < w; x++) {
+      const c = document.createElement('div');
+      c.className = 'mc';
+      c.style.width = c.style.height = cellPx + 'px';
+      const ch = row[x] || '.';
+      c.style.background = ch === '.' ? 'transparent' : (PAL[ch] || '#fff');
+      div.appendChild(c);
+    }
+  }
+  return div;
+}
+
+/* ================= ЭКРАНЫ ================= */
+
+const $ = id => document.getElementById(id);
+function show(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+  $(screenId).classList.add('on');
+}
+
+function mixUnlocked() {
+  return LEVELS.filter(l => l.table).every(l => save.stars[l.id]);
+}
+
+function renderMenu() {
+  const box = $('levels');
+  box.innerHTML = '';
+  const unlocked = mixUnlocked();
+  for (const lvl of LEVELS) {
+    const model = MODELS[lvl.model];
+    const btn = document.createElement('button');
+    btn.className = 'lvl' + (lvl.table ? '' : ' mix');
+    const locked = !lvl.table && !unlocked;
+    if (locked) btn.classList.add('locked');
+    const mini = document.createElement('span');
+    mini.className = 'mini';
+    mini.appendChild(renderMini(model, 4));
+    btn.appendChild(mini);
+    const info = document.createElement('span');
+    info.className = 'info';
+    info.innerHTML = `<div class="num">${lvl.table ? '× ' + lvl.table : '🎲 РАЗНОБОЙ'}</div>
+      <div class="model-name">${locked ? '<span class="lock-hint">🔒 Собери все 6 моделей!</span>' : model.name}</div>`;
+    btn.appendChild(info);
+    const star = document.createElement('span');
+    star.className = 'star';
+    star.textContent = save.stars[lvl.id] ? '⭐' : '';
+    btn.appendChild(star);
+    if (!locked) btn.addEventListener('click', () => { initAudio(); startLevel(lvl); });
+    box.appendChild(btn);
+  }
+  $('mixSostav').checked = !!save.mixSostav;
+}
+
+/* ================= ИГРОВОЙ ЦИКЛ ================= */
+
+let cur = null; // { level, model, cells, questions, qIndex, revealed }
+
+function startLevel(level) {
+  const model = MODELS[level.model];
+  cur = {
+    level, model,
+    cells: modelCells(model),
+    questions: genQuestions(level),
+    qIndex: 0,
+    revealed: 0
+  };
+  buildGrid();
+  show('game');
+  $('lvlName').textContent = (level.table ? '× ' + level.table + ' · ' : '') + model.name;
+  nextQuestion();
+}
+
+function buildGrid() {
+  const grid = $('grid');
+  grid.innerHTML = '';
+  const art = cur.model.art;
+  const w = Math.max(...art.map(r => r.length));
+  const cellPx = Math.min(Math.floor(Math.min(560, window.innerWidth - 60) / w), 22);
+  grid.style.gridTemplateColumns = `repeat(${w}, ${cellPx}px)`;
+  grid.style.gridAutoRows = cellPx + 'px';
+  cur.cellEls = {};
+  for (let y = 0; y < art.length; y++) {
+    for (let x = 0; x < w; x++) {
+      const d = document.createElement('div');
+      d.className = 'cell';
+      const ch = art[y][x] || '.';
+      if (ch !== '.') { d.classList.add('ghost'); cur.cellEls[x + ',' + y] = d; }
+      grid.appendChild(d);
+    }
+  }
+  updateParts();
+}
+
+function updateParts() {
+  $('partsLabel').textContent = `Детали: ${cur.revealed} / ${cur.cells.length}`;
+  $('progress').style.width = (cur.revealed / cur.cells.length * 100) + '%';
+}
+
+function revealChunk() {
+  const questionsLeft = cur.questions.length - cur.qIndex;
+  const remaining = cur.cells.length - cur.revealed;
+  const chunk = questionsLeft <= 0 ? remaining : Math.ceil(remaining / questionsLeft);
+  for (let i = 0; i < chunk && cur.revealed < cur.cells.length; i++) {
+    const cell = cur.cells[cur.revealed++];
+    const el = cur.cellEls[cell.x + ',' + cell.y];
+    el.classList.remove('ghost');
+    el.classList.add('brick', 'pop');
+    el.style.background = cell.color;
+  }
+  updateParts();
+}
+
+function nextQuestion() {
+  const q = cur.questions[cur.qIndex];
+  $('question').innerHTML = q.html;
+  $('question').classList.remove('shake');
+  const box = $('answers');
+  box.innerHTML = '';
+  q.options.forEach((val, i) => {
+    const b = document.createElement('button');
+    b.className = 'ans c' + i;
+    b.textContent = val;
+    b.addEventListener('click', () => answer(b, val, q));
+    box.appendChild(b);
+  });
+}
+
+function answer(btn, val, q) {
+  initAudio();
+  document.querySelectorAll('.ans').forEach(b => b.disabled = true);
+  if (val === q.answer) {
+    sndSnap();
+    cur.qIndex++;
+    revealChunk();
+    if (cur.qIndex >= cur.questions.length) {
+      setTimeout(win, 600);
+    } else {
+      setTimeout(nextQuestion, 450);
+    }
+  } else {
+    sndCrash();
+    $('question').classList.add('shake');
+    // Модель рассыпается
+    Object.values(cur.cellEls).forEach(el => {
+      if (el.classList.contains('brick')) {
+        el.style.setProperty('--spin', (rnd(720) - 360) + 'deg');
+        el.style.setProperty('--drift', (rnd(120) - 60) + 'px');
+        el.classList.add('fall');
+      }
+    });
+    $('failFormula').textContent = q.plain;
+    setTimeout(() => $('failOverlay').classList.add('on'), 900);
+  }
+}
+
+function win() {
+  sndWin();
+  save.stars[cur.level.id] = true;
+  store(save);
+  $('winText').textContent = cur.level.table
+    ? `Таблица на ${cur.level.table} пройдена — «${cur.model.name}» готов!`
+    : `Ты настоящий КУБОМАСТЕР! «${cur.model.name}» собран!`;
+  const wm = $('winModel');
+  wm.innerHTML = '';
+  wm.appendChild(renderMini(cur.model, 9));
+  $('winOverlay').classList.add('on');
+}
+
+/* ================= КНОПКИ ================= */
+
+$('retryBtn').addEventListener('click', () => {
+  $('failOverlay').classList.remove('on');
+  startLevel(cur.level);
+});
+$('failMenuBtn').addEventListener('click', () => {
+  $('failOverlay').classList.remove('on');
+  renderMenu(); show('menu');
+});
+$('winMenuBtn').addEventListener('click', () => {
+  $('winOverlay').classList.remove('on');
+  renderMenu(); show('menu');
+});
+$('backBtn').addEventListener('click', () => { renderMenu(); show('menu'); });
+$('mixSostav').addEventListener('change', e => { save.mixSostav = e.target.checked; store(save); });
+
+renderMenu();
+</script>
+</body>
+</html>
