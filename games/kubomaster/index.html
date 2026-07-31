@@ -174,6 +174,31 @@
     background: var(--panel); border: 3px solid var(--line); border-radius: 16px;
     max-width: 440px; width: 100%; padding: 24px 20px; text-align: center;
     box-shadow: 0 10px 0 rgba(0,0,0,.4);
+    position: relative; overflow: hidden;
+  }
+  .card > *:not(.confetti) { position: relative; z-index: 1; }
+
+  /* Салют из деталек на экране победы */
+  .confetti { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+  .confetti i {
+    position: absolute; top: -14px; width: 11px; height: 8px; border-radius: 2px;
+    box-shadow: inset -1px -2px 0 rgba(0,0,0,.25);
+    animation: confettiFall var(--dur) linear var(--delay) infinite;
+  }
+  @keyframes confettiFall {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+    10%  { opacity: 1; }
+    100% { transform: translateY(460px) rotate(var(--spin)); opacity: 0; }
+  }
+
+  .win-stars { font-size: 1.15rem; letter-spacing: .12em; margin: 0 0 6px !important; }
+
+  @keyframes winPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  .card.win h2 { animation: winPulse 1.1s ease-in-out infinite; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .confetti { display: none; }
+    .card.win h2 { animation: none; }
   }
   .card h2 { font-family: var(--font-display); margin: 0 0 10px; font-size: 1.5rem; }
   .card.fail h2 { color: var(--red); }
@@ -275,10 +300,14 @@
 <!-- ===== ПОБЕДА (СБОРКА) ===== -->
 <div class="overlay" id="winOverlay">
   <div class="card win">
+    <div class="confetti" id="winConfetti"></div>
     <h2>🏆 МОДЕЛЬ СОБРАНА!</h2>
     <p id="winText"></p>
     <div style="display:flex; justify-content:center; margin:12px 0;" id="winModel"></div>
-    <button class="big-btn" id="winMenuBtn">К выбору уровней</button>
+    <p class="win-stars" id="winStars"></p>
+    <p id="winNextHint"></p>
+    <button class="big-btn" id="winNextBtn"></button>
+    <button class="big-btn alt" id="winMenuBtn">К выбору уровней</button>
   </div>
 </div>
 
@@ -474,6 +503,12 @@ function initAudio() {
 function sndSnap()  { beep(520, .07, 'square', 0, .12); beep(780, .09, 'square', .06, .12); }
 function sndCrash() { beep(300, .3, 'sawtooth', 0, .18); beep(180, .4, 'sawtooth', .08, .18); beep(90, .5, 'sawtooth', .16, .18); }
 function sndWin()   { [523, 659, 784, 1047].forEach((f, i) => beep(f, .18, 'square', i * .13, .14)); }
+// "Та-дааааа!" — короткое "та" и раскатистый мажорный аккорд на "дааааа"
+function sndTada()  {
+  beep(392, .15, 'square', 0, .12);
+  [523.25, 659.25, 784, 1046.5].forEach((f, i) => beep(f, 1.2, 'square', .17 + i * .015, .085));
+  beep(261.63, 1.2, 'triangle', .17, .08);
+}
 function sndAlarm() { beep(440, .12, 'square', 0, .14); beep(440, .12, 'square', .18, .14); }
 function sndJump()  { beep(400, .08, 'square', 0, .1); beep(600, .08, 'square', .07, .1); beep(900, .12, 'square', .14, .1); }
 function sndFlip()  { [500, 620, 760, 920, 1150].forEach((f, i) => beep(f, .09, 'square', i * .07, .11)); }
@@ -802,14 +837,59 @@ function endRescue(success, timedOut) {
   }
 }
 
+function closeWin() {
+  $('winOverlay').classList.remove('on');
+  $('winConfetti').innerHTML = '';   // не крутим анимацию впустую
+}
+
+function spawnConfetti() {
+  const box = $('winConfetti');
+  box.innerHTML = '';
+  const colors = ['#e84f3d', '#ffd23f', '#4da3ff', '#58c14b', '#ff9f2e', '#e8ecf2'];
+  for (let i = 0; i < 26; i++) {
+    const c = document.createElement('i');
+    c.style.left = rnd(100) + '%';
+    c.style.background = colors[rnd(colors.length)];
+    c.style.setProperty('--dur', (1.6 + Math.random() * 1.6).toFixed(2) + 's');
+    c.style.setProperty('--delay', (Math.random() * 1.8).toFixed(2) + 's');
+    c.style.setProperty('--spin', (rnd(900) - 450) + 'deg');
+    box.appendChild(c);
+  }
+}
+
 function win() {
-  sndWin();
+  sndTada();
   save.stars[cur.level.id] = true;
   store(save);
-  $('winText').textContent = `Таблица на ${cur.level.table} пройдена — «${cur.model.name}» готов!`;
+  // "модель ... собрана" — чтобы фраза подходила и Перчатке, и Экскаватору
+  $('winText').textContent = `Таблица на ${cur.level.table} пройдена, модель «${cur.model.name}» собрана!`;
   const wm = $('winModel');
   wm.innerHTML = '';
   wm.appendChild(renderMini(cur.model, 9));
+
+  const done = LEVELS.filter(l => save.stars[l.id]).length;
+  $('winStars').textContent = '⭐'.repeat(done) + '☆'.repeat(LEVELS.length - done);
+
+  const next = LEVELS[LEVELS.indexOf(cur.level) + 1];
+  const btn = $('winNextBtn');
+  if (next) {
+    $('winNextHint').textContent = save.stars[next.id]
+      ? `Следующая цифра — ${next.table}. Повторим?`
+      : `Следующая цифра — ${next.table}. Соберём «${MODELS[next.model].name}»?`;
+    btn.textContent = `Дальше: × ${next.table} →`;
+    btn.onclick = () => { closeWin(); startLevel(next); };
+  } else if (done === LEVELS.length) {
+    $('winNextHint').textContent = 'Все модели собраны! Пора проверить себя на скорость.';
+    btn.textContent = '🏁 В гонку-разнобой!';
+    btn.onclick = () => { closeWin(); startRace(); };
+  } else {
+    const left = LEVELS.find(l => !save.stars[l.id]);
+    $('winNextHint').textContent = `Осталось собрать ещё ${LEVELS.length - done}. Например, × ${left.table}.`;
+    btn.textContent = `Дальше: × ${left.table} →`;
+    btn.onclick = () => { closeWin(); startLevel(left); };
+  }
+
+  spawnConfetti();
   $('winOverlay').classList.add('on');
 }
 
@@ -1401,7 +1481,7 @@ $('failMenuBtn').addEventListener('click', () => {
   renderMenu(); show('menu');
 });
 $('winMenuBtn').addEventListener('click', () => {
-  $('winOverlay').classList.remove('on');
+  closeWin();
   renderMenu(); show('menu');
 });
 $('backBtn').addEventListener('click', () => { cancelRescue(); renderMenu(); show('menu'); });
