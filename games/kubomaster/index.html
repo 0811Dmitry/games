@@ -79,7 +79,9 @@
     border-radius: 8px; padding: 6px 12px; font-size: 1rem; cursor: pointer;
   }
   .hud .lvl-name { font-family: var(--font-display); font-size: .95rem; color: var(--yellow); }
-  .hud .parts { margin-left: auto; font-size: .9rem; color: var(--ink-dim); }
+  .hud .lives { margin-left: auto; font-size: .9rem; color: var(--orange); white-space: nowrap; }
+  .hud .lives.empty { color: var(--ink-dim); opacity: .55; }
+  .hud .parts { font-size: .9rem; color: var(--ink-dim); white-space: nowrap; }
 
   .build-zone {
     background: var(--bg-soft);
@@ -200,7 +202,7 @@
 <div class="screen on" id="menu">
   <h1 class="logo">КУБОМАСТЕР</h1>
   <p class="sub">Реши примеры — и собери модель деталь за деталью.<br>
-  Ошибёшься — модель рассыпется… если не успеешь её спасти!</p>
+  Ошибёшься — модель рассыпется… но есть <b>🛟 два спасения</b> на уровень!</p>
   <div class="levels" id="levels"></div>
   <div class="section-title">Когда цифры выучены</div>
   <div class="levels" id="raceBox"></div>
@@ -211,6 +213,7 @@
   <div class="hud">
     <button class="back-btn" id="backBtn">⟵ Меню</button>
     <span class="lvl-name" id="lvlName"></span>
+    <span class="lives" id="livesLabel"></span>
     <span class="parts" id="partsLabel"></span>
   </div>
   <div class="build-zone"><div class="brick-grid" id="grid"></div></div>
@@ -224,6 +227,7 @@
   <div class="hud">
     <button class="back-btn" id="raceBackBtn">⟵ Меню</button>
     <span class="lvl-name" style="color: var(--green);">🏁 РАЗНОБОЙ</span>
+    <span class="lives" id="raceLivesLabel"></span>
     <span class="parts" id="raceProgressLabel"></span>
   </div>
   <canvas id="raceCanvas"></canvas>
@@ -238,6 +242,7 @@
   <div class="card rescue">
     <h2>🛟 СПАСЕНИЕ!</h2>
     <p id="rescueText">Деталь падает! Успей решить — и она встанет на место!</p>
+    <p id="rescueLeft" style="color: var(--orange); font-weight: 700;"></p>
     <div class="question" id="rescueQuestion"></div>
     <div class="t-track"><div class="t-fill" id="rescueFill"></div></div>
     <div class="answers" id="rescueAnswers"></div>
@@ -435,6 +440,8 @@ const LEVELS = [
 ];
 
 const RESCUE_MS = 15000;   // время на спасение
+const RESCUE_MAX = 2;      // сколько спасений даётся на уровень / заезд
+                           // (специально мало: иначе таблицу можно "пройти" одним сложением)
 const RACE_MS = 12000;     // время на пример в гонке
 const RACE_OBSTACLES = 10; // длина трассы
 
@@ -620,9 +627,12 @@ function startLevel(level) {
     cells: modelCells(model),
     questions: genQuestions(level),
     qIndex: 0,
-    revealed: 0
+    revealed: 0,
+    rescuesLeft: RESCUE_MAX
   };
+  cancelRescue();
   buildGrid();
+  updateLives();
   show('game');
   $('lvlName').textContent = '× ' + level.table + ' · ' + model.name;
   nextQuestion();
@@ -650,8 +660,19 @@ function buildGrid() {
 }
 
 function updateParts() {
-  $('partsLabel').textContent = `Детали: ${cur.revealed} / ${cur.cells.length}`;
+  $('partsLabel').textContent = `🧱 ${cur.revealed} / ${cur.cells.length}`;
   $('progress').style.width = (cur.revealed / cur.cells.length * 100) + '%';
+}
+
+// Счётчик оставшихся спасений в шапке
+function livesText(left) {
+  return left > 0 ? '🛟'.repeat(left) : '🛟 0';
+}
+function updateLives() {
+  const el = $('livesLabel');
+  el.textContent = livesText(cur.rescuesLeft);
+  el.classList.toggle('empty', cur.rescuesLeft === 0);
+  el.title = `Спасений осталось: ${cur.rescuesLeft}`;
 }
 
 function revealChunk() {
@@ -697,8 +718,10 @@ function answer(btn, val, q) {
     }
   } else {
     $('question').classList.add('shake');
-    if (!q.rescued) {
-      q.rescued = true;
+    if (!q.rescued && cur.rescuesLeft > 0) {
+      q.rescued = true;          // один и тот же пример спасать дважды нельзя
+      cur.rescuesLeft--;
+      updateLives();
       sndAlarm();
       setTimeout(() => startRescue(q, null), 400);
     } else {
@@ -724,12 +747,23 @@ function failLevel(formulaText) {
 
 let rescue = null;
 
+// Спасение вызывается с задержкой — если за это время ушли с экрана, не показываем его
+function cancelRescue() {
+  if (rescue) { clearInterval(rescue.timer); rescue = null; }
+  $('rescueOverlay').classList.remove('on');
+}
+
 function startRescue(origQ, onDone) {
+  if (!$(onDone ? 'race' : 'game').classList.contains('on')) return;
   const q = makeSostavQuestion(50);
   rescue = { q, origQ, onDone, deadline: performance.now() + RESCUE_MS };
   $('rescueText').textContent = onDone
     ? 'Машина летит в кювет! Успей решить — и выровняешь её!'
     : 'Деталь падает! Успей решить — и она встанет на место!';
+  const left = onDone ? race.rescuesLeft : cur.rescuesLeft;
+  $('rescueLeft').textContent = left > 0
+    ? `Спасений осталось после этого: ${left}`
+    : 'Это последнее спасение!';
   $('rescueQuestion').innerHTML = q.html;
   const box = $('rescueAnswers');
   box.innerHTML = '';
@@ -817,7 +851,7 @@ function startRace() {
     ctx: canvas.getContext('2d'),
     idx: 0,
     types,
-    rescued: false,
+    rescuesLeft: RESCUE_MAX,
     phase: 'cruise',
     phaseStart: performance.now(),
     last: performance.now(),
@@ -833,6 +867,7 @@ function startRace() {
     label: null,
     stars: Array.from({ length: 30 }, () => ({ x: rnd(CANVAS_W), y: rnd(110), r: Math.random() * 1.4 + .5 }))
   };
+  cancelRescue();
   show('race');
   $('raceQuestion').innerHTML = '';
   $('raceAnswers').innerHTML = '';
@@ -846,6 +881,10 @@ function stopRace() { if (race) race.active = false; }
 
 function updateRaceProgress() {
   $('raceProgressLabel').textContent = `🚧 ${race.idx} / ${RACE_OBSTACLES}`;
+  const el = $('raceLivesLabel');
+  el.textContent = livesText(race.rescuesLeft);
+  el.classList.toggle('empty', race.rescuesLeft === 0);
+  el.title = `Спасений осталось: ${race.rescuesLeft}`;
 }
 
 function raceAsk() {
@@ -906,8 +945,10 @@ function raceDanger(timedOut) {
   const r = race;
   r.phase = 'paused';
   $('raceTimerTrack').style.visibility = 'hidden';
-  if (!r.rescued) {
-    r.rescued = true;
+  if (!r.q.rescued && r.rescuesLeft > 0) {
+    r.q.rescued = true;        // один и тот же пример спасать дважды нельзя
+    r.rescuesLeft--;
+    updateRaceProgress();
     sndAlarm();
     const badQ = r.q;
     setTimeout(() => {
@@ -1363,9 +1404,9 @@ $('winMenuBtn').addEventListener('click', () => {
   $('winOverlay').classList.remove('on');
   renderMenu(); show('menu');
 });
-$('backBtn').addEventListener('click', () => { renderMenu(); show('menu'); });
+$('backBtn').addEventListener('click', () => { cancelRescue(); renderMenu(); show('menu'); });
 
-$('raceBackBtn').addEventListener('click', () => { stopRace(); renderMenu(); show('menu'); });
+$('raceBackBtn').addEventListener('click', () => { stopRace(); cancelRescue(); renderMenu(); show('menu'); });
 $('raceRetryBtn').addEventListener('click', () => {
   $('raceFailOverlay').classList.remove('on');
   stopRace(); startRace();
