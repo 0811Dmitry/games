@@ -64,19 +64,13 @@
   .lvl .num { font-family: var(--font-display); font-size: 1.15rem; color: var(--yellow); }
   .lvl .model-name { font-size: .85rem; color: var(--ink-dim); }
   .lvl .star { margin-left: auto; font-size: 1.3rem; }
-  .lvl.locked { opacity: .55; cursor: not-allowed; }
-  .lvl.mix { grid-column: 1 / -1; border-color: var(--yellow); }
   .lvl.race-card { grid-column: 1 / -1; border-color: var(--green); }
   .lvl.race-card .num { color: var(--green); }
-  .lock-hint { font-size: .78rem; color: var(--ink-dim); }
 
-  .opts {
-    margin: 20px auto 0; max-width: 480px;
-    background: var(--bg-soft); border: 2px dashed var(--line); border-radius: 12px;
-    padding: 12px 16px; display: flex; align-items: flex-start; gap: 10px;
-    font-size: .92rem; line-height: 1.45; color: var(--ink-dim); cursor: pointer;
+  .section-title {
+    text-align: center; font-family: var(--font-display); color: var(--ink-dim);
+    font-size: .8rem; letter-spacing: .14em; text-transform: uppercase; margin: 26px 0 12px;
   }
-  .opts input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--yellow); }
 
   /* ===== Игра (сборка) ===== */
   .hud { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
@@ -154,7 +148,7 @@
   }
   .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--green), var(--yellow)); transition: width .4s; }
 
-  /* ===== Таймер (спасение и гонка) ===== */
+  /* ===== Таймер ===== */
   .t-track {
     max-width: 460px; margin: 0 auto 14px; height: 14px;
     background: var(--bg-soft); border: 2px solid var(--line); border-radius: 8px; overflow: hidden;
@@ -163,7 +157,7 @@
 
   /* ===== Гонка ===== */
   #raceCanvas {
-    display: block; width: 100%; max-width: 720px; margin: 0 auto 12px;
+    display: block; width: 100%; max-width: 720px; margin: 0 auto 10px;
     border: 3px solid var(--line); border-radius: 14px; background: #0d1830;
   }
   .race-msg { text-align: center; color: var(--ink-dim); font-size: 1rem; min-height: 1.4em; margin: 0 0 8px; }
@@ -208,10 +202,8 @@
   <p class="sub">Реши примеры — и собери модель деталь за деталью.<br>
   Ошибёшься — модель рассыпется… если не успеешь её спасти!</p>
   <div class="levels" id="levels"></div>
-  <label class="opts">
-    <input type="checkbox" id="mixSostav">
-    <span><b>Подмешивать «состав числа»</b><br>Иногда будут попадаться примеры вида «6&nbsp;+&nbsp;?&nbsp;=&nbsp;13»</span>
-  </label>
+  <div class="section-title">Когда цифры выучены</div>
+  <div class="levels" id="raceBox"></div>
 </div>
 
 <!-- ===== ИГРА (СБОРКА) ===== -->
@@ -231,7 +223,7 @@
 <div class="screen" id="race">
   <div class="hud">
     <button class="back-btn" id="raceBackBtn">⟵ Меню</button>
-    <span class="lvl-name" style="color: var(--green);">🏁 ГОНКА</span>
+    <span class="lvl-name" style="color: var(--green);">🏁 РАЗНОБОЙ</span>
     <span class="parts" id="raceProgressLabel"></span>
   </div>
   <canvas id="raceCanvas"></canvas>
@@ -245,7 +237,7 @@
 <div class="overlay" id="rescueOverlay">
   <div class="card rescue">
     <h2>🛟 СПАСЕНИЕ!</h2>
-    <p>Деталь падает! Успей решить — и она встанет на место!</p>
+    <p id="rescueText">Деталь падает! Успей решить — и она встанет на место!</p>
     <div class="question" id="rescueQuestion"></div>
     <div class="t-track"><div class="t-fill" id="rescueFill"></div></div>
     <div class="answers" id="rescueAnswers"></div>
@@ -426,40 +418,20 @@ const MODELS = {
       '....GG..GG....',
       '...GG....GG...'
     ]
-  },
-  mega: {
-    name: 'МЕГА-РОБОТ',
-    art: [
-      '....YYYYYY....',
-      '....YBYYBY....',
-      '....YYYYYY....',
-      '......RR......',
-      '.RRRRRRRRRRR..',
-      'RR.RRRRRRR.RR.',
-      'RR.RBBBBR..RR.',
-      'GG.RBBBBR..GG.',
-      '...RRRRRR.....',
-      '...RRRRRR.....',
-      '...BB..BB.....',
-      '...BB..BB.....',
-      '...BB..BB.....',
-      '..KKK..KKK....'
-    ]
   }
 };
 
 /* ================= УРОВНИ ================= */
 
 const LEVELS = [
-  { id: '2', label: 'Умножение на 2', table: 2, model: 'moto' },
-  { id: '3', label: 'Умножение на 3', table: 3, model: 'falcon' },
-  { id: '4', label: 'Умножение на 4', table: 4, model: 'glove' },
-  { id: '5', label: 'Умножение на 5', table: 5, model: 'digger' },
-  { id: '6', label: 'Умножение на 6', table: 6, model: 'robot' },
-  { id: '7', label: 'Умножение на 7', table: 7, model: 'racer' },
-  { id: '8', label: 'Умножение на 8', table: 8, model: 'copter' },
-  { id: '9', label: 'Умножение на 9', table: 9, model: 'dino' },
-  { id: 'mix', label: 'РАЗНОБОЙ', table: null, model: 'mega' }
+  { id: '2', table: 2, model: 'moto' },
+  { id: '3', table: 3, model: 'falcon' },
+  { id: '4', table: 4, model: 'glove' },
+  { id: '5', table: 5, model: 'digger' },
+  { id: '6', table: 6, model: 'robot' },
+  { id: '7', table: 7, model: 'racer' },
+  { id: '8', table: 8, model: 'copter' },
+  { id: '9', table: 9, model: 'dino' }
 ];
 
 const RESCUE_MS = 15000;   // время на спасение
@@ -497,6 +469,11 @@ function sndCrash() { beep(300, .3, 'sawtooth', 0, .18); beep(180, .4, 'sawtooth
 function sndWin()   { [523, 659, 784, 1047].forEach((f, i) => beep(f, .18, 'square', i * .13, .14)); }
 function sndAlarm() { beep(440, .12, 'square', 0, .14); beep(440, .12, 'square', .18, .14); }
 function sndJump()  { beep(400, .08, 'square', 0, .1); beep(600, .08, 'square', .07, .1); beep(900, .12, 'square', .14, .1); }
+function sndFlip()  { [500, 620, 760, 920, 1150].forEach((f, i) => beep(f, .09, 'square', i * .07, .11)); }
+function sndRocket(){ beep(1200, .25, 'sawtooth', 0, .1); beep(700, .2, 'sawtooth', .1, .08); }
+function sndBoom()  { beep(160, .35, 'sawtooth', 0, .2); beep(80, .45, 'sawtooth', .06, .18); }
+function sndTurbo() { beep(220, .3, 'sawtooth', 0, .12); beep(440, .25, 'square', .12, .1); beep(880, .2, 'square', .26, .09); }
+function sndHorn()  { beep(330, .16, 'square', 0, .12); beep(262, .22, 'square', .16, .12); }
 
 /* ================= УТИЛИТЫ ================= */
 
@@ -505,6 +482,7 @@ function shuffle(a) {
   for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; }
   return a;
 }
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 function pickWrongs(ans, cands) {
   const wrongs = new Set();
   for (const c of shuffle(cands)) {
@@ -533,21 +511,14 @@ function makeSostavQuestion(maxSum) {
 
 function genQuestions(level) {
   const qs = [];
-  if (level.table) {
-    const factors = shuffle([2, 3, 4, 5, 6, 7, 8, 9]);
-    factors.forEach(a => qs.push(makeMulQuestion(a, level.table)));
-    for (let i = 0; i < 2; i++) qs.push(makeMulQuestion(2 + rnd(8), level.table));
-  } else {
-    for (let i = 0; i < 12; i++) qs.push(makeMulQuestion(2 + rnd(8), 2 + rnd(8)));
-  }
-  if (document.getElementById('mixSostav').checked) {
-    for (let i = 0; i < 3; i++) qs.splice(1 + rnd(qs.length - 1), 0, makeSostavQuestion(18));
-  }
+  const factors = shuffle([2, 3, 4, 5, 6, 7, 8, 9]);
+  factors.forEach(a => qs.push(makeMulQuestion(a, level.table)));
+  for (let i = 0; i < 2; i++) qs.push(makeMulQuestion(2 + rnd(8), level.table));
   return qs;
 }
 
+// Гонка — разнобой: любые цифры от 2 до 9
 function makeRaceQuestion() {
-  if (document.getElementById('mixSostav').checked && Math.random() < 0.3) return makeSostavQuestion(18);
   return makeMulQuestion(2 + rnd(8), 2 + rnd(8));
 }
 
@@ -593,37 +564,32 @@ function show(screenId) {
   $(screenId).classList.add('on');
 }
 
-function mixUnlocked() {
-  return LEVELS.filter(l => l.table).every(l => save.stars[l.id]);
-}
-
 function renderMenu() {
   const box = $('levels');
   box.innerHTML = '';
-  const unlocked = mixUnlocked();
   for (const lvl of LEVELS) {
     const model = MODELS[lvl.model];
     const btn = document.createElement('button');
-    btn.className = 'lvl' + (lvl.table ? '' : ' mix');
-    const locked = !lvl.table && !unlocked;
-    if (locked) btn.classList.add('locked');
+    btn.className = 'lvl';
     const mini = document.createElement('span');
     mini.className = 'mini';
     mini.appendChild(renderMini(model, 4));
     btn.appendChild(mini);
     const info = document.createElement('span');
     info.className = 'info';
-    info.innerHTML = `<div class="num">${lvl.table ? '× ' + lvl.table : '🎲 РАЗНОБОЙ'}</div>
-      <div class="model-name">${locked ? '<span class="lock-hint">🔒 Собери все 8 моделей!</span>' : model.name}</div>`;
+    info.innerHTML = `<div class="num">× ${lvl.table}</div><div class="model-name">${model.name}</div>`;
     btn.appendChild(info);
     const star = document.createElement('span');
     star.className = 'star';
     star.textContent = save.stars[lvl.id] ? '⭐' : '';
     btn.appendChild(star);
-    if (!locked) btn.addEventListener('click', () => { initAudio(); startLevel(lvl); });
+    btn.addEventListener('click', () => { initAudio(); startLevel(lvl); });
     box.appendChild(btn);
   }
-  // Карточка гонки
+
+  // Карточка гонки — режим "разнобой"
+  const rbox = $('raceBox');
+  rbox.innerHTML = '';
   const raceBtn = document.createElement('button');
   raceBtn.className = 'lvl race-card';
   const mini = document.createElement('span');
@@ -632,17 +598,15 @@ function renderMenu() {
   raceBtn.appendChild(mini);
   const info = document.createElement('span');
   info.className = 'info';
-  info.innerHTML = `<div class="num">🏁 ГОНКА</div>
-    <div class="model-name">Реши пример до препятствия — или авария! Вся таблица вперемешку.</div>`;
+  info.innerHTML = `<div class="num">🏁 ГОНКА-РАЗНОБОЙ</div>
+    <div class="model-name">Вся таблица вперемешку! Реши пример вовремя — и машина сделает сальто, обгонит соперника или собьёт метеорит ракетой.</div>`;
   raceBtn.appendChild(info);
   const star = document.createElement('span');
   star.className = 'star';
   star.textContent = save.stars.race ? '⭐' : '';
   raceBtn.appendChild(star);
   raceBtn.addEventListener('click', () => { initAudio(); startRace(); });
-  box.appendChild(raceBtn);
-
-  $('mixSostav').checked = !!save.mixSostav;
+  rbox.appendChild(raceBtn);
 }
 
 /* ================= СБОРКА: ИГРОВОЙ ЦИКЛ ================= */
@@ -660,7 +624,7 @@ function startLevel(level) {
   };
   buildGrid();
   show('game');
-  $('lvlName').textContent = (level.table ? '× ' + level.table + ' · ' : '') + model.name;
+  $('lvlName').textContent = '× ' + level.table + ' · ' + model.name;
   nextQuestion();
 }
 
@@ -734,10 +698,9 @@ function answer(btn, val, q) {
   } else {
     $('question').classList.add('shake');
     if (!q.rescued) {
-      // Шанс на спасение: состав числа до 50 на время
       q.rescued = true;
       sndAlarm();
-      setTimeout(() => startRescue(q), 400);
+      setTimeout(() => startRescue(q, null), 400);
     } else {
       failLevel(q.plain);
     }
@@ -757,13 +720,16 @@ function failLevel(formulaText) {
   setTimeout(() => $('failOverlay').classList.add('on'), 900);
 }
 
-/* ================= СПАСЕНИЕ ================= */
+/* ================= СПАСЕНИЕ (состав числа до 50 на время) ================= */
 
-let rescue = null; // { q, origQ, deadline, timer }
+let rescue = null;
 
-function startRescue(origQ) {
+function startRescue(origQ, onDone) {
   const q = makeSostavQuestion(50);
-  rescue = { q, origQ, deadline: performance.now() + RESCUE_MS };
+  rescue = { q, origQ, onDone, deadline: performance.now() + RESCUE_MS };
+  $('rescueText').textContent = onDone
+    ? 'Машина летит в кювет! Успей решить — и выровняешь её!'
+    : 'Деталь падает! Успей решить — и она встанет на место!';
   $('rescueQuestion').innerHTML = q.html;
   const box = $('rescueAnswers');
   box.innerHTML = '';
@@ -771,7 +737,7 @@ function startRescue(origQ) {
     const b = document.createElement('button');
     b.className = 'ans c' + i;
     b.textContent = val;
-    b.addEventListener('click', () => rescueAnswer(val));
+    b.addEventListener('click', () => endRescue(val === rescue.q.answer, false));
     box.appendChild(b);
   });
   $('rescueFill').style.width = '100%';
@@ -786,32 +752,27 @@ function startRescue(origQ) {
   }, 80);
 }
 
-function rescueAnswer(val) {
-  endRescue(val === rescue.q.answer, false);
-}
-
 function endRescue(success, timedOut) {
   clearInterval(rescue.timer);
   $('rescueOverlay').classList.remove('on');
+  const r = rescue;
+  rescue = null;
+  if (r.onDone) { r.onDone(success, timedOut ? '' : r.q.plain); return; }
   if (success) {
     sndSnap();
-    // Деталь спасена — тот же вопрос ещё раз, варианты перемешаны
-    rescue.origQ.options = shuffle(rescue.origQ.options.slice());
+    r.origQ.options = shuffle(r.origQ.options.slice());
     nextQuestion();
   } else {
-    const extra = timedOut ? '' : '<br><span style="font-size:1.1rem;">' + rescue.q.plain + '</span>';
-    failLevel(rescue.origQ.plain + extra);
+    const extra = timedOut ? '' : '<br><span style="font-size:1.1rem;">' + r.q.plain + '</span>';
+    failLevel(r.origQ.plain + extra);
   }
-  rescue = null;
 }
 
 function win() {
   sndWin();
   save.stars[cur.level.id] = true;
   store(save);
-  $('winText').textContent = cur.level.table
-    ? `Таблица на ${cur.level.table} пройдена — «${cur.model.name}» готов!`
-    : `Ты настоящий КУБОМАСТЕР! «${cur.model.name}» собран!`;
+  $('winText').textContent = `Таблица на ${cur.level.table} пройдена — «${cur.model.name}» готов!`;
   const wm = $('winModel');
   wm.innerHTML = '';
   wm.appendChild(renderMini(cur.model, 9));
@@ -820,8 +781,28 @@ function win() {
 
 /* ================= ГОНКА ================= */
 
-const CANVAS_W = 720, CANVAS_H = 230;
-const CAR_X = 110, ROAD_Y = 158;
+const CANVAS_W = 720, CANVAS_H = 240;
+const ROAD_TOP = 148, ROAD_H = 74;
+const LANE_NEAR = 208;        // земля: тут едет машина и стоят препятствия
+const LANE_FAR = 178;         // дальняя полоса — для обгона
+const CAR_X = 120;
+const HOLD_X = 520;           // где препятствие ждёт, пока решается пример
+
+/* Трюки. start/end — расстояние от машины до центра препятствия,
+   на котором трюк начинается и заканчивается. Благодаря привязке
+   к расстоянию (а не к таймеру) машина всегда прыгает ИМЕННО над
+   препятствием, как быстро бы игрок ни ответил. */
+const OB = {
+  wall:   { w: 30, label: 'ПРЫЖОК!',  start: 130, end: -120, h: 66 },
+  tires:  { w: 32, label: 'ПРЫЖОК!',  start: 130, end: -120, h: 58 },
+  cones:  { w: 51, label: 'ПРЫЖОК!',  start: 130, end: -125, h: 55 },
+  ramp:   { w: 46, label: 'САЛЬТО!',  start:  70, end: -215, h: 96 },
+  rival:  { w: 62, label: 'ОБГОН!',   start: 165, end: -165, h: 0 },
+  meteor: { w: 34, label: 'В ЯБЛОЧКО!', start: 0,  end: 0,    h: 0 },
+  boost:  { w: 84, label: 'ТУРБО!',   start: 150, end: -150, h: 0 }
+};
+const OB_TYPES = ['ramp', 'rival', 'meteor', 'wall', 'boost', 'cones', 'tires'];
+
 let race = null;
 
 function startRace() {
@@ -829,24 +810,28 @@ function startRace() {
   canvas.width = CANVAS_W;
   canvas.height = CANVAS_H;
   const types = [];
-  const pool = ['wall', 'cones', 'ramp', 'tires'];
-  for (let i = 0; i < RACE_OBSTACLES; i++) types.push(pool[i % pool.length]);
+  for (let i = 0; i < RACE_OBSTACLES; i++) types.push(OB_TYPES[i % OB_TYPES.length]);
   shuffle(types);
   race = {
     active: true,
     ctx: canvas.getContext('2d'),
     idx: 0,
     types,
+    rescued: false,
     phase: 'cruise',
     phaseStart: performance.now(),
-    dash: 0,
+    last: performance.now(),
+    dist: 0,
+    speed: 7,
     q: null,
     deadline: 0,
-    obstacle: null, // { type, x }
+    ob: null,
     finishX: null,
-    carY: 0, carAngle: 0,
-    pieces: [],
-    stars: Array.from({ length: 26 }, () => ({ x: rnd(CANVAS_W), y: rnd(90), r: Math.random() * 1.4 + .5 }))
+    rocket: null,
+    particles: [],
+    flame: 0,
+    label: null,
+    stars: Array.from({ length: 30 }, () => ({ x: rnd(CANVAS_W), y: rnd(110), r: Math.random() * 1.4 + .5 }))
   };
   show('race');
   $('raceQuestion').innerHTML = '';
@@ -860,201 +845,422 @@ function startRace() {
 function stopRace() { if (race) race.active = false; }
 
 function updateRaceProgress() {
-  $('raceProgressLabel').textContent = `Препятствия: ${race.idx} / ${RACE_OBSTACLES}`;
+  $('raceProgressLabel').textContent = `🚧 ${race.idx} / ${RACE_OBSTACLES}`;
 }
 
-function raceAskQuestion() {
-  race.q = makeRaceQuestion();
-  race.deadline = performance.now() + RACE_MS;
-  race.obstacle = { type: race.types[race.idx], x: CANVAS_W + 50 };
-  $('raceQuestion').innerHTML = race.q.html;
-  $('raceMsg').textContent = 'Препятствие впереди! Решай скорее!';
+function raceAsk() {
+  const r = race;
+  const type = r.types[r.idx];
+  r.q = makeRaceQuestion();
+  r.deadline = performance.now() + RACE_MS;
+  r.ob = { type, x: CANVAS_W + 70, y: type === 'meteor' ? 60 : LANE_NEAR, dead: false };
+  r.rocket = null;
+  $('raceQuestion').innerHTML = r.q.html;
+  $('raceMsg').textContent = type === 'meteor' ? 'Метеорит! Реши — и стреляй!'
+    : type === 'rival' ? 'Соперник впереди! Решай — обгоняем!'
+    : 'Препятствие! Решай скорее!';
   $('raceTimerTrack').style.visibility = 'visible';
   const box = $('raceAnswers');
   box.innerHTML = '';
-  race.q.options.forEach((val, i) => {
+  r.q.options.forEach((val, i) => {
     const b = document.createElement('button');
     b.className = 'ans c' + i;
     b.textContent = val;
     b.addEventListener('click', () => raceAnswer(val));
     box.appendChild(b);
   });
-  race.phase = 'question';
-  race.phaseStart = performance.now();
+  r.phase = 'question';
+  r.phaseStart = performance.now();
 }
 
 function raceAnswer(val) {
   initAudio();
-  if (race.phase !== 'question') return;
+  if (!race || race.phase !== 'question') return;
   document.querySelectorAll('#raceAnswers .ans').forEach(b => b.disabled = true);
   if (val === race.q.answer) {
-    sndJump();
-    race.phase = 'pass';
-    race.phaseStart = performance.now();
-    $('raceMsg').textContent = 'Дааа! Прыжок!';
-    $('raceTimerTrack').style.visibility = 'hidden';
+    startStunt();
   } else {
-    raceCrash();
+    raceDanger(false);
   }
 }
 
-function raceCrash() {
+function startStunt() {
+  const r = race;
+  const t = r.ob.type;
+  r.phase = 'action';
+  r.phaseStart = performance.now();
+  $('raceTimerTrack').style.visibility = 'hidden';
+  $('raceQuestion').innerHTML = '';
+  $('raceMsg').textContent = 'Отлично! Газуем!';
+  if (t === 'meteor') {
+    sndRocket();
+    r.rocket = { x: CAR_X + 34, y: LANE_NEAR - 30 };
+  } else if (t === 'ramp') sndFlip();
+  else if (t === 'boost') sndTurbo();
+  else if (t === 'rival') sndHorn();
+  else sndJump();
+}
+
+// Промах или таймаут: сначала шанс на спасение, второй раз — авария
+function raceDanger(timedOut) {
+  const r = race;
+  r.phase = 'paused';
+  $('raceTimerTrack').style.visibility = 'hidden';
+  if (!r.rescued) {
+    r.rescued = true;
+    sndAlarm();
+    const badQ = r.q;
+    setTimeout(() => {
+      if (!race || !race.active) return;
+      startRescue(badQ, (ok) => {
+        if (!race || !race.active) return;
+        if (ok) {
+          // Машина выровнялась — тот же пример ещё раз
+          sndSnap();
+          race.deadline = performance.now() + RACE_MS;
+          race.phase = 'question';
+          race.phaseStart = performance.now();
+          $('raceTimerTrack').style.visibility = 'visible';
+          $('raceMsg').textContent = 'Ух, пронесло! Решай!';
+          const box = $('raceAnswers');
+          box.innerHTML = '';
+          shuffle(race.q.options.slice()).forEach((val, i) => {
+            const b = document.createElement('button');
+            b.className = 'ans c' + i;
+            b.textContent = val;
+            b.addEventListener('click', () => raceAnswer(val));
+            box.appendChild(b);
+          });
+        } else {
+          raceCrash(timedOut);
+        }
+      });
+    }, 350);
+  } else {
+    raceCrash(timedOut);
+  }
+}
+
+function raceCrash(timedOut) {
+  const r = race;
   sndCrash();
-  race.phase = 'crash';
-  race.phaseStart = performance.now();
+  r.phase = 'crash';
+  r.phaseStart = performance.now();
   $('raceTimerTrack').style.visibility = 'hidden';
   $('raceQuestion').innerHTML = '';
   $('raceAnswers').innerHTML = '';
   $('raceMsg').textContent = '';
-  race.pieces = Array.from({ length: 14 }, () => ({
-    x: CAR_X + rnd(40) - 20, y: ROAD_Y - 14 + rnd(10),
+  r.particles = Array.from({ length: 16 }, () => ({
+    x: CAR_X + rnd(40) - 20, y: LANE_NEAR - 20 + rnd(12),
     vx: Math.random() * 6 - 2, vy: -(Math.random() * 6 + 2),
-    rot: 0, vr: Math.random() * .4 - .2,
+    rot: 0, vr: Math.random() * .4 - .2, life: 1,
     c: ['#58c14b', '#2b2b33', '#e8ecf2', '#ffd23f'][rnd(4)]
   }));
   setTimeout(() => {
     if (!race || !race.active) return;
-    $('raceFailText').textContent = race.q && race.deadline - performance.now() <= 0
-      ? 'Не успел решить — машина врезалась!'
-      : 'Неверный ответ — машина врезалась!';
-    $('raceFailFormula').textContent = race.q ? race.q.plain : '';
+    $('raceFailText').textContent = timedOut ? 'Время вышло — машина врезалась!' : 'Неверный ответ — машина врезалась!';
+    $('raceFailFormula').textContent = r.q ? r.q.plain : '';
     $('raceFailOverlay').classList.add('on');
   }, 1100);
 }
 
+/* ---------- Главный цикл гонки ---------- */
+
 function raceLoop(now) {
   if (!race || !race.active) return;
   const r = race;
+  const f = clamp((now - r.last) / 16.67, 0, 3);   // нормализация по кадру
+  r.last = now;
   const t = now - r.phaseStart;
 
-  // --- Логика фаз ---
   if (r.phase === 'cruise') {
-    r.dash += 7;
-    if (t > 1200) raceAskQuestion();
+    r.speed = 7;
+    r.dist += r.speed * f;
+    if (t > 1000) raceAsk();
+
   } else if (r.phase === 'question') {
-    r.dash += 2.5;
+    // Машина тормозит перед препятствием, оно ждёт впереди и медленно подкрадывается
+    r.speed = 2.2;
+    r.dist += r.speed * f;
     const left = r.deadline - now;
     const frac = Math.max(0, left / RACE_MS);
     $('raceTimerFill').style.width = (frac * 100) + '%';
     $('raceTimerFill').style.background = frac > 0.5 ? 'var(--green)' : frac > 0.25 ? 'var(--yellow)' : 'var(--red)';
-    // Препятствие подъезжает по мере таймера
-    r.obstacle.x = (CAR_X + 55) + (CANVAS_W + 50 - CAR_X - 55) * frac;
-    if (left <= 0) raceCrash();
-  } else if (r.phase === 'pass') {
-    r.dash += 9;
-    const p = Math.min(1, t / 900);
-    r.carY = -74 * Math.sin(Math.PI * p);
-    r.carAngle = -0.25 * Math.sin(Math.PI * p);
-    if (r.obstacle) r.obstacle.x -= 9;
-    if (p >= 1) {
-      r.carY = 0; r.carAngle = 0; r.obstacle = null;
+    const targetX = HOLD_X - (1 - frac) * 90;
+    r.ob.x += (targetX - r.ob.x) * clamp(0.06 * f, 0, 1);
+    if (r.ob.type === 'meteor') r.ob.y = 60 + (1 - frac) * 30 + Math.sin(now / 300) * 5;
+    if (left <= 0) raceDanger(true);
+
+  } else if (r.phase === 'paused') {
+    // Ждём оверлей спасения: мир замер
+    r.speed = 0;
+
+  } else if (r.phase === 'action') {
+    r.speed = 11.5;
+    r.dist += r.speed * f;
+    r.ob.x -= r.speed * f;
+    if (r.ob.type === 'meteor') r.ob.y += 0.7 * f;
+    stepRocket(f);
+    const spec = OB[r.ob.type];
+    const d = (r.ob.x + spec.w / 2) - CAR_X;
+    if (!r.label && d < spec.start && r.ob.type !== 'meteor') {
+      r.label = { text: spec.label, born: now };
+    }
+    if (r.ob.x + spec.w < -40) {
+      r.ob = null; r.rocket = null; r.label = null;
       r.idx++;
       updateRaceProgress();
       if (r.idx >= RACE_OBSTACLES) {
         r.phase = 'finishing';
         r.finishX = CANVAS_W + 60;
-        $('raceQuestion').innerHTML = '';
+        $('raceAnswers').innerHTML = '';
         $('raceMsg').textContent = 'Финиш уже виден!';
       } else {
         r.phase = 'cruise';
-        $('raceQuestion').innerHTML = '';
         $('raceAnswers').innerHTML = '';
         $('raceMsg').textContent = 'Едем дальше…';
       }
       r.phaseStart = now;
     }
+
   } else if (r.phase === 'finishing') {
-    r.dash += 8;
-    r.finishX -= 6;
-    if (r.finishX <= CAR_X - 40) {
+    r.speed = 9;
+    r.dist += r.speed * f;
+    r.finishX -= r.speed * f;
+    if (r.finishX <= CAR_X - 50) {
       r.phase = 'done';
       sndWin();
       save.stars.race = true;
       store(save);
       setTimeout(() => { if (r.active) $('raceWinOverlay').classList.add('on'); }, 400);
     }
+
   } else if (r.phase === 'crash') {
-    for (const p of r.pieces) {
-      p.x += p.vx; p.y += p.vy; p.vy += 0.45; p.rot += p.vr;
-      if (p.y > ROAD_Y + 40) { p.y = ROAD_Y + 40; p.vy *= -0.35; p.vx *= 0.8; }
+    r.speed = 0;
+    for (const p of r.particles) {
+      p.x += p.vx * f; p.y += p.vy * f; p.vy += 0.45 * f; p.rot += p.vr * f;
+      if (p.y > LANE_NEAR) { p.y = LANE_NEAR; p.vy *= -0.35; p.vx *= 0.82; }
     }
   }
 
-  drawRace(r);
+  stepParticles(f);
+  drawRace(now);
   requestAnimationFrame(raceLoop);
 }
 
-function drawRace(r) {
-  const c = r.ctx;
-  // Небо
-  c.fillStyle = '#0d1830';
-  c.fillRect(0, 0, CANVAS_W, CANVAS_H);
-  c.fillStyle = '#f4f8ff';
-  for (const s of r.stars) { c.globalAlpha = .7; c.fillRect(s.x, s.y, s.r, s.r); }
-  c.globalAlpha = 1;
-  // Холмы
-  c.fillStyle = '#152647';
-  c.beginPath(); c.ellipse(150 - (r.dash * .15 % 900), 150, 260, 60, 0, Math.PI, 0); c.fill();
-  c.beginPath(); c.ellipse(600 - (r.dash * .15 % 900) + 300, 150, 300, 75, 0, Math.PI, 0); c.fill();
-  // Дорога
-  c.fillStyle = '#39415a';
-  c.fillRect(0, ROAD_Y, CANVAS_W, 52);
-  c.fillStyle = '#9fb3d8';
-  c.fillRect(0, ROAD_Y, CANVAS_W, 3);
-  c.fillRect(0, ROAD_Y + 49, CANVAS_W, 3);
-  // Разметка
-  c.fillStyle = '#ffd23f';
-  for (let x = -(r.dash % 46); x < CANVAS_W; x += 46) c.fillRect(x, ROAD_Y + 25, 24, 4);
-
-  // Финиш
-  if (r.finishX !== null && r.phase !== 'done' || r.phase === 'done') {
-    if (r.finishX !== null) drawFinish(c, r.finishX);
-  }
-  // Препятствие
-  if (r.obstacle) drawObstacle(c, r.obstacle);
-  // Машина
-  if (r.phase === 'crash') {
-    for (const p of r.pieces) {
-      c.save(); c.translate(p.x, p.y); c.rotate(p.rot);
-      c.fillStyle = p.c; c.fillRect(-5, -4, 10, 8);
-      c.restore();
+function stepRocket(f) {
+  const r = race;
+  if (!r.rocket || !r.ob || r.ob.dead) return;
+  const m = r.ob;
+  const dx = (m.x + 17) - r.rocket.x, dy = (m.y + 17) - r.rocket.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  const sp = 15;
+  r.rocket.x += (dx / dist) * sp * f;
+  r.rocket.y += (dy / dist) * sp * f;
+  r.rocket.a = Math.atan2(dy, dx);
+  if (dist < 20) {
+    m.dead = true;
+    r.rocket = null;
+    sndBoom();
+    r.label = { text: OB.meteor.label, born: performance.now() };
+    for (let i = 0; i < 22; i++) {
+      const ang = Math.random() * Math.PI * 2, v = Math.random() * 5 + 1.5;
+      r.particles.push({
+        x: m.x + 17, y: m.y + 17,
+        vx: Math.cos(ang) * v, vy: Math.sin(ang) * v,
+        life: 1, decay: 0.022, size: 3 + rnd(4),
+        c: ['#ff9f2e', '#ffd23f', '#e84f3d', '#e8ecf2'][rnd(4)]
+      });
     }
-  } else {
-    drawCar(c, CAR_X, ROAD_Y - 2 + r.carY, r.carAngle, r.dash);
   }
 }
 
-function drawCar(c, x, y, angle, dash) {
+function stepParticles(f) {
+  const r = race;
+  for (let i = r.particles.length - 1; i >= 0; i--) {
+    const p = r.particles[i];
+    if (p.decay === undefined) continue;   // осколки аварии живут отдельно
+    p.x += p.vx * f; p.y += p.vy * f; p.vy += 0.12 * f;
+    p.life -= p.decay * f;
+    if (p.life <= 0) r.particles.splice(i, 1);
+  }
+}
+
+/* ---------- Состояние машины (позиция и трюк) ---------- */
+
+function carState() {
+  const r = race;
+  const st = { y: LANE_NEAR, angle: 0, boost: false };
+  if (r.phase !== 'action' || !r.ob) return st;
+  const spec = OB[r.ob.type];
+  const type = r.ob.type;
+  if (type === 'meteor') { st.boost = true; return st; }
+  const d = (r.ob.x + spec.w / 2) - CAR_X;
+  const p = clamp((spec.start - d) / (spec.start - spec.end), 0, 1);
+  if (p <= 0 || p >= 1) return st;
+  if (type === 'rival') {
+    st.y = LANE_NEAR - (LANE_NEAR - LANE_FAR) * Math.sin(Math.PI * p);
+    st.angle = -0.12 * Math.sin(2 * Math.PI * p);
+    st.boost = true;
+  } else if (type === 'boost') {
+    st.angle = -0.32 * Math.sin(Math.PI * p);   // вилли на заднем колесе
+    st.boost = true;
+  } else if (type === 'ramp') {
+    st.y = LANE_NEAR - spec.h * Math.sin(Math.PI * p);
+    st.angle = -2 * Math.PI * p;                 // полное сальто
+  } else {
+    st.y = LANE_NEAR - spec.h * Math.sin(Math.PI * p);
+    st.angle = -0.45 * Math.sin(2 * Math.PI * p);
+  }
+  return st;
+}
+
+/* ---------- Отрисовка ---------- */
+
+function drawRace(now) {
+  const r = race, c = r.ctx;
+  c.fillStyle = '#0d1830';
+  c.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // Звёзды
+  c.fillStyle = '#f4f8ff'; c.globalAlpha = .7;
+  for (const s of r.stars) c.fillRect(s.x, s.y, s.r, s.r);
+  c.globalAlpha = 1;
+
+  // Холмы (параллакс)
+  c.fillStyle = '#152647';
+  const hs = (r.dist * .18) % 760;
+  for (let i = -1; i < 2; i++) {
+    c.beginPath(); c.ellipse(200 + i * 760 - hs, ROAD_TOP + 4, 250, 62, 0, Math.PI, 0); c.fill();
+    c.beginPath(); c.ellipse(560 + i * 760 - hs, ROAD_TOP + 4, 190, 44, 0, Math.PI, 0); c.fill();
+  }
+
+  // Дорога
+  c.fillStyle = '#39415a';
+  c.fillRect(0, ROAD_TOP, CANVAS_W, ROAD_H);
+  c.fillStyle = '#9fb3d8';
+  c.fillRect(0, ROAD_TOP, CANVAS_W, 3);
+  c.fillRect(0, ROAD_TOP + ROAD_H - 3, CANVAS_W, 3);
+  c.fillStyle = '#ffd23f';
+  for (let x = -(r.dist % 46); x < CANVAS_W; x += 46) c.fillRect(x, ROAD_TOP + 30, 24, 4);
+
+  // Линии скорости при разгоне
+  if (r.speed > 9) {
+    c.fillStyle = 'rgba(255,255,255,.25)';
+    for (let i = 0; i < 7; i++) {
+      const y = 60 + ((i * 37 + r.dist * 2) % (ROAD_TOP - 40));
+      const x = CANVAS_W - ((r.dist * 3 + i * 130) % (CANVAS_W + 120));
+      c.fillRect(x, y, 34, 2);
+    }
+  }
+
+  if (r.finishX !== null) drawFinish(c, r.finishX);
+  if (r.ob && !r.ob.dead) drawObstacle(c, r.ob);
+  if (r.rocket) drawRocket(c, r.rocket);
+
+  // Машина
+  if (r.phase === 'crash') {
+    for (const p of r.particles) {
+      if (p.decay !== undefined) continue;
+      c.save(); c.translate(p.x, p.y); c.rotate(p.rot);
+      c.fillStyle = p.c; c.fillRect(-5, -8, 10, 8);
+      c.restore();
+    }
+  } else {
+    const st = carState();
+    drawCar(c, CAR_X, st.y, st.angle, st.boost, r);
+  }
+
+  // Взрывы и искры
+  for (const p of r.particles) {
+    if (p.decay === undefined) continue;
+    c.globalAlpha = clamp(p.life, 0, 1);
+    c.fillStyle = p.c;
+    c.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+  }
+  c.globalAlpha = 1;
+
+  // Надпись трюка
+  if (r.label) {
+    const age = (now - r.label.born) / 900;
+    if (age > 1) r.label = null;
+    else {
+      c.save();
+      c.globalAlpha = 1 - age * age;
+      c.font = 'bold 30px "Courier New", monospace';
+      c.textAlign = 'center';
+      c.lineWidth = 5; c.strokeStyle = '#0d1830';
+      c.strokeText(r.label.text, CANVAS_W / 2, 62 - age * 26);
+      c.fillStyle = '#ffd23f';
+      c.fillText(r.label.text, CANVAS_W / 2, 62 - age * 26);
+      c.restore();
+    }
+  }
+}
+
+/* Машина: (x, y) — точка касания земли */
+function drawCar(c, x, y, angle, boost, r) {
+  // Пламя из выхлопа
+  if (boost || r.speed > 9) {
+    const fl = 10 + Math.random() * 14;
+    c.save(); c.translate(x, y); c.rotate(angle);
+    c.fillStyle = '#ff9f2e';
+    c.fillRect(-34 - fl, -24, fl, 7);
+    c.fillStyle = '#ffd23f';
+    c.fillRect(-34 - fl * .6, -22, fl * .6, 3);
+    c.restore();
+  }
   c.save();
   c.translate(x, y);
   c.rotate(angle);
-  const bounce = Math.sin(dash * .3) * 1.2;
-  c.translate(0, bounce * .4);
+  const bounce = Math.sin(race.dist * .25) * (race.speed > 4 ? 1.1 : 0.3);
+  c.translate(0, bounce);
   // Корпус
   c.fillStyle = '#58c14b';
-  c.fillRect(-30, -20, 60, 13);
-  c.fillRect(18, -24, 14, 6);            // нос
+  c.fillRect(-32, -27, 62, 13);
+  c.fillRect(18, -31, 14, 6);
   c.fillStyle = '#3d9a33';
-  c.fillRect(-30, -10, 60, 3);
+  c.fillRect(-32, -17, 62, 3);
   // Кабина
   c.fillStyle = '#e8ecf2';
-  c.fillRect(-12, -30, 18, 10);
+  c.fillRect(-13, -37, 18, 10);
   c.fillStyle = '#58c14b';
-  c.fillRect(-16, -32, 6, 12);           // спойлер-стойка
+  c.fillRect(-18, -39, 6, 12);
   c.fillStyle = '#ffd23f';
-  c.fillRect(-32, -30, 8, 4);            // антикрыло
+  c.fillRect(-34, -37, 9, 4);      // антикрыло
   // Колёса
-  for (const wx of [-18, 18]) {
+  for (const wx of [-19, 18]) {
     c.fillStyle = '#2b2b33';
-    c.beginPath(); c.arc(wx, -2, 9, 0, 7); c.fill();
+    c.beginPath(); c.arc(wx, -9, 9, 0, 7); c.fill();
     c.fillStyle = '#9aa7b8';
-    c.beginPath(); c.arc(wx, -2, 4, 0, 7); c.fill();
+    c.beginPath(); c.arc(wx, -9, 4, 0, 7); c.fill();
+  }
+  c.restore();
+}
+
+function drawRivalCar(c, x, y) {
+  c.save();
+  c.translate(x, y);
+  c.fillStyle = '#e84f3d';
+  c.fillRect(-30, -25, 58, 12);
+  c.fillRect(16, -29, 13, 6);
+  c.fillStyle = '#b83a2b';
+  c.fillRect(-30, -16, 58, 3);
+  c.fillStyle = '#8fd0ff';
+  c.fillRect(-12, -34, 17, 9);
+  c.fillStyle = '#ffd23f';
+  c.fillRect(-32, -34, 8, 4);
+  for (const wx of [-17, 17]) {
+    c.fillStyle = '#2b2b33';
+    c.beginPath(); c.arc(wx, -8, 8, 0, 7); c.fill();
+    c.fillStyle = '#6b7686';
+    c.beginPath(); c.arc(wx, -8, 3.5, 0, 7); c.fill();
   }
   c.restore();
 }
 
 function drawObstacle(c, ob) {
-  const x = ob.x, base = ROAD_Y;
+  const x = ob.x, base = LANE_NEAR;
   if (ob.type === 'wall') {
     const cols = ['#e84f3d', '#ffd23f'];
     for (let row = 0; row < 3; row++)
@@ -1066,35 +1272,80 @@ function drawObstacle(c, ob) {
     for (let i = 0; i < 3; i++) {
       const cx = x + i * 17;
       c.fillStyle = '#ff8b2e';
-      c.beginPath(); c.moveTo(cx, base); c.lineTo(cx + 12, base); c.lineTo(cx + 6, base - 16); c.fill();
+      c.beginPath(); c.moveTo(cx, base); c.lineTo(cx + 12, base); c.lineTo(cx + 6, base - 18); c.fill();
       c.fillStyle = '#e8ecf2';
-      c.fillRect(cx + 2, base - 7, 8, 3);
+      c.fillRect(cx + 2, base - 8, 8, 3);
     }
   } else if (ob.type === 'ramp') {
     c.fillStyle = '#ffd23f';
-    c.beginPath(); c.moveTo(x, base); c.lineTo(x + 44, base); c.lineTo(x + 44, base - 26); c.fill();
+    c.beginPath(); c.moveTo(x, base); c.lineTo(x + 46, base); c.lineTo(x + 46, base - 30); c.fill();
     c.fillStyle = '#e8b02e';
-    c.beginPath(); c.moveTo(x + 8, base); c.lineTo(x + 44, base); c.lineTo(x + 44, base - 21); c.fill();
+    c.beginPath(); c.moveTo(x + 9, base); c.lineTo(x + 46, base); c.lineTo(x + 46, base - 24); c.fill();
+    c.fillStyle = '#2b2b33';
+    c.fillRect(x, base - 3, 46, 3);
   } else if (ob.type === 'tires') {
-    const positions = [[0, 0], [16, 0], [8, -13]];
-    for (const [dx, dy] of positions) {
+    for (const [dx, dy] of [[0, 0], [17, 0], [8, -14]]) {
       c.fillStyle = '#2b2b33';
-      c.beginPath(); c.arc(x + 8 + dx, base - 8 + dy, 8, 0, 7); c.fill();
+      c.beginPath(); c.arc(x + 9 + dx, base - 9 + dy, 9, 0, 7); c.fill();
       c.fillStyle = '#6b7686';
-      c.beginPath(); c.arc(x + 8 + dx, base - 8 + dy, 3, 0, 7); c.fill();
+      c.beginPath(); c.arc(x + 9 + dx, base - 9 + dy, 3.5, 0, 7); c.fill();
     }
+  } else if (ob.type === 'rival') {
+    drawRivalCar(c, x + 31, base);
+  } else if (ob.type === 'meteor') {
+    // Метеорит с огненным хвостом
+    c.save();
+    c.translate(ob.x + 17, ob.y + 17);
+    c.fillStyle = '#ff9f2e'; c.globalAlpha = .55;
+    for (let i = 1; i < 5; i++) c.fillRect(10 + i * 9, -6 + i, 9, 4 + i);
+    c.globalAlpha = 1;
+    c.rotate(race.dist * .02);
+    c.fillStyle = '#6b7686';
+    c.fillRect(-16, -16, 32, 32);
+    c.fillStyle = '#4a5464';
+    c.fillRect(-16, -16, 12, 12); c.fillRect(4, 2, 12, 12);
+    c.fillStyle = '#8b95a8';
+    c.fillRect(-6, -8, 10, 10);
+    c.restore();
+  } else if (ob.type === 'boost') {
+    // Турбо-ворота
+    const glow = 0.55 + Math.sin(race.dist * .1) * .25;
+    c.save();
+    c.globalAlpha = glow;
+    c.strokeStyle = '#4da3ff'; c.lineWidth = 6;
+    c.beginPath(); c.moveTo(x + 6, base); c.lineTo(x + 6, base - 60);
+    c.lineTo(x + 78, base - 60); c.lineTo(x + 78, base); c.stroke();
+    c.globalAlpha = 1;
+    c.fillStyle = '#ffd23f';
+    for (let i = 0; i < 3; i++) {
+      const ax = x + 22 + i * 20;
+      c.beginPath(); c.moveTo(ax, base - 46); c.lineTo(ax + 12, base - 32); c.lineTo(ax, base - 18); c.fill();
+    }
+    c.restore();
   }
 }
 
+function drawRocket(c, r0) {
+  c.save();
+  c.translate(r0.x, r0.y);
+  c.rotate(r0.a || 0);
+  c.fillStyle = '#ff9f2e';
+  c.fillRect(-16, -2, 12, 4);
+  c.fillStyle = '#e8ecf2';
+  c.fillRect(-6, -3, 12, 6);
+  c.fillStyle = '#e84f3d';
+  c.beginPath(); c.moveTo(6, -3); c.lineTo(13, 0); c.lineTo(6, 3); c.fill();
+  c.restore();
+}
+
 function drawFinish(c, x) {
-  // Столб и клетчатая арка
   c.fillStyle = '#9aa7b8';
-  c.fillRect(x, ROAD_Y - 64, 5, 64);
-  c.fillRect(x + 75, ROAD_Y - 64, 5, 64);
-  for (let i = 0; i < 10; i++)
+  c.fillRect(x, LANE_NEAR - 78, 6, 78);
+  c.fillRect(x + 78, LANE_NEAR - 78, 6, 78);
+  for (let i = 0; i < 11; i++)
     for (let j = 0; j < 2; j++) {
       c.fillStyle = (i + j) % 2 ? '#e8ecf2' : '#2b2b33';
-      c.fillRect(x + i * 8, ROAD_Y - 64 + j * 8, 8, 8);
+      c.fillRect(x + i * 8, LANE_NEAR - 78 + j * 8, 8, 8);
     }
 }
 
@@ -1127,8 +1378,6 @@ $('raceWinMenuBtn').addEventListener('click', () => {
   $('raceWinOverlay').classList.remove('on');
   stopRace(); renderMenu(); show('menu');
 });
-
-$('mixSostav').addEventListener('change', e => { save.mixSostav = e.target.checked; store(save); });
 
 renderMenu();
 </script>
