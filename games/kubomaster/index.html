@@ -66,6 +66,8 @@
   .lvl .star { margin-left: auto; font-size: 1.3rem; }
   .lvl.locked { opacity: .55; cursor: not-allowed; }
   .lvl.mix { grid-column: 1 / -1; border-color: var(--yellow); }
+  .lvl.race-card { grid-column: 1 / -1; border-color: var(--green); }
+  .lvl.race-card .num { color: var(--green); }
   .lock-hint { font-size: .78rem; color: var(--ink-dim); }
 
   .opts {
@@ -76,7 +78,7 @@
   }
   .opts input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--yellow); }
 
-  /* ===== Игра ===== */
+  /* ===== Игра (сборка) ===== */
   .hud { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
   .back-btn {
     background: var(--panel); color: var(--ink); border: 2px solid var(--line);
@@ -152,6 +154,20 @@
   }
   .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--green), var(--yellow)); transition: width .4s; }
 
+  /* ===== Таймер (спасение и гонка) ===== */
+  .t-track {
+    max-width: 460px; margin: 0 auto 14px; height: 14px;
+    background: var(--bg-soft); border: 2px solid var(--line); border-radius: 8px; overflow: hidden;
+  }
+  .t-fill { height: 100%; width: 100%; background: var(--green); }
+
+  /* ===== Гонка ===== */
+  #raceCanvas {
+    display: block; width: 100%; max-width: 720px; margin: 0 auto 12px;
+    border: 3px solid var(--line); border-radius: 14px; background: #0d1830;
+  }
+  .race-msg { text-align: center; color: var(--ink-dim); font-size: 1rem; min-height: 1.4em; margin: 0 0 8px; }
+
   /* ===== Оверлеи ===== */
   .overlay {
     position: fixed; inset: 0; background: rgba(10,16,30,.86);
@@ -160,14 +176,18 @@
   .overlay.on { display: flex; }
   .card {
     background: var(--panel); border: 3px solid var(--line); border-radius: 16px;
-    max-width: 420px; width: 100%; padding: 26px 22px; text-align: center;
+    max-width: 440px; width: 100%; padding: 24px 20px; text-align: center;
     box-shadow: 0 10px 0 rgba(0,0,0,.4);
   }
   .card h2 { font-family: var(--font-display); margin: 0 0 10px; font-size: 1.5rem; }
   .card.fail h2 { color: var(--red); }
   .card.win h2 { color: var(--green); }
+  .card.rescue { border-color: var(--orange); }
+  .card.rescue h2 { color: var(--orange); }
   .card p { color: var(--ink-dim); line-height: 1.5; margin: 0 0 8px; }
-  .card .formula { font-family: var(--font-display); font-size: 1.6rem; color: var(--yellow); margin: 10px 0 16px; }
+  .card .formula { font-family: var(--font-display); font-size: 1.5rem; color: var(--yellow); margin: 10px 0 16px; line-height: 1.5; }
+  .card .question { font-size: clamp(1.6rem, 7vw, 2.4rem); margin: 12px 0 10px; }
+  .card .ans { padding: 16px 8px 10px; font-size: 1.4rem; }
   .big-btn {
     display: inline-block; border: 3px solid var(--yellow); border-radius: 10px;
     background: var(--red); color: #fff; font-weight: 800; font-size: 1.1rem;
@@ -186,7 +206,7 @@
 <div class="screen on" id="menu">
   <h1 class="logo">КУБОМАСТЕР</h1>
   <p class="sub">Реши примеры — и собери модель деталь за деталью.<br>
-  Ошибёшься — модель рассыпется, и уровень начнётся заново!</p>
+  Ошибёшься — модель рассыпется… если не успеешь её спасти!</p>
   <div class="levels" id="levels"></div>
   <label class="opts">
     <input type="checkbox" id="mixSostav">
@@ -194,7 +214,7 @@
   </label>
 </div>
 
-<!-- ===== ИГРА ===== -->
+<!-- ===== ИГРА (СБОРКА) ===== -->
 <div class="screen" id="game">
   <div class="hud">
     <button class="back-btn" id="backBtn">⟵ Меню</button>
@@ -207,11 +227,36 @@
   <div class="progress-track"><div class="progress-fill" id="progress"></div></div>
 </div>
 
-<!-- ===== ПРОИГРЫШ ===== -->
+<!-- ===== ГОНКА ===== -->
+<div class="screen" id="race">
+  <div class="hud">
+    <button class="back-btn" id="raceBackBtn">⟵ Меню</button>
+    <span class="lvl-name" style="color: var(--green);">🏁 ГОНКА</span>
+    <span class="parts" id="raceProgressLabel"></span>
+  </div>
+  <canvas id="raceCanvas"></canvas>
+  <p class="race-msg" id="raceMsg"></p>
+  <div class="t-track" id="raceTimerTrack" style="visibility:hidden;"><div class="t-fill" id="raceTimerFill"></div></div>
+  <div class="question" id="raceQuestion" style="margin: 4px 0 12px; font-size: clamp(1.7rem, 7vw, 2.6rem);"></div>
+  <div class="answers" id="raceAnswers"></div>
+</div>
+
+<!-- ===== СПАСЕНИЕ ===== -->
+<div class="overlay" id="rescueOverlay">
+  <div class="card rescue">
+    <h2>🛟 СПАСЕНИЕ!</h2>
+    <p>Деталь падает! Успей решить — и она встанет на место!</p>
+    <div class="question" id="rescueQuestion"></div>
+    <div class="t-track"><div class="t-fill" id="rescueFill"></div></div>
+    <div class="answers" id="rescueAnswers"></div>
+  </div>
+</div>
+
+<!-- ===== ПРОИГРЫШ (СБОРКА) ===== -->
 <div class="overlay" id="failOverlay">
   <div class="card fail">
     <h2>💥 БАБАХ!</h2>
-    <p>Деталь не подошла — модель рассыпалась!</p>
+    <p>Модель рассыпалась!</p>
     <p>Запомни:</p>
     <div class="formula" id="failFormula"></div>
     <button class="big-btn" id="retryBtn">🔧 Собрать заново</button>
@@ -219,13 +264,34 @@
   </div>
 </div>
 
-<!-- ===== ПОБЕДА ===== -->
+<!-- ===== ПРОИГРЫШ (ГОНКА) ===== -->
+<div class="overlay" id="raceFailOverlay">
+  <div class="card fail">
+    <h2>💥 АВАРИЯ!</h2>
+    <p id="raceFailText"></p>
+    <div class="formula" id="raceFailFormula"></div>
+    <button class="big-btn" id="raceRetryBtn">🏁 Заезд сначала</button>
+    <button class="big-btn alt" id="raceFailMenuBtn">В меню</button>
+  </div>
+</div>
+
+<!-- ===== ПОБЕДА (СБОРКА) ===== -->
 <div class="overlay" id="winOverlay">
   <div class="card win">
     <h2>🏆 МОДЕЛЬ СОБРАНА!</h2>
     <p id="winText"></p>
     <div style="display:flex; justify-content:center; margin:12px 0;" id="winModel"></div>
     <button class="big-btn" id="winMenuBtn">К выбору уровней</button>
+  </div>
+</div>
+
+<!-- ===== ПОБЕДА (ГОНКА) ===== -->
+<div class="overlay" id="raceWinOverlay">
+  <div class="card win">
+    <h2>🏆 ФИНИШ!</h2>
+    <p>Вся трасса пройдена без единой аварии.<br>Ты — чемпион КУБО-гонок!</p>
+    <div style="font-size:3rem; margin: 8px 0;">🏎️🏁</div>
+    <button class="big-btn" id="raceWinMenuBtn">К выбору уровней</button>
   </div>
 </div>
 
@@ -330,6 +396,37 @@ const MODELS = {
       '..KK.......KK...'
     ]
   },
+  copter: {
+    name: 'Вертолёт',
+    art: [
+      '..SSSSSSSSSSS...',
+      '.......SS.......',
+      '....BBBBBB......',
+      '...BLLBBBBBBBB..',
+      '...BLLBBBB...BB.',
+      '...BBBBBBB..BBB.',
+      '....BBBBB.......',
+      '......B.........',
+      '...SSSSSSS......'
+    ]
+  },
+  dino: {
+    name: 'Дино-робот',
+    art: [
+      '..........GGGG',
+      '..........GYGG',
+      '..........GGWW',
+      '..........GGG.',
+      '.......GGGGG..',
+      '..G..GGGGGGG..',
+      '..GGGGGGGG.G..',
+      '...GGGGGGG....',
+      '....GGGGG.....',
+      '....GG.GG.....',
+      '....GG..GG....',
+      '...GG....GG...'
+    ]
+  },
   mega: {
     name: 'МЕГА-РОБОТ',
     art: [
@@ -360,8 +457,14 @@ const LEVELS = [
   { id: '5', label: 'Умножение на 5', table: 5, model: 'digger' },
   { id: '6', label: 'Умножение на 6', table: 6, model: 'robot' },
   { id: '7', label: 'Умножение на 7', table: 7, model: 'racer' },
+  { id: '8', label: 'Умножение на 8', table: 8, model: 'copter' },
+  { id: '9', label: 'Умножение на 9', table: 9, model: 'dino' },
   { id: 'mix', label: 'РАЗНОБОЙ', table: null, model: 'mega' }
 ];
+
+const RESCUE_MS = 15000;   // время на спасение
+const RACE_MS = 12000;     // время на пример в гонке
+const RACE_OBSTACLES = 10; // длина трассы
 
 /* ================= СОХРАНЕНИЯ ================= */
 
@@ -392,6 +495,8 @@ function initAudio() {
 function sndSnap()  { beep(520, .07, 'square', 0, .12); beep(780, .09, 'square', .06, .12); }
 function sndCrash() { beep(300, .3, 'sawtooth', 0, .18); beep(180, .4, 'sawtooth', .08, .18); beep(90, .5, 'sawtooth', .16, .18); }
 function sndWin()   { [523, 659, 784, 1047].forEach((f, i) => beep(f, .18, 'square', i * .13, .14)); }
+function sndAlarm() { beep(440, .12, 'square', 0, .14); beep(440, .12, 'square', .18, .14); }
+function sndJump()  { beep(400, .08, 'square', 0, .1); beep(600, .08, 'square', .07, .1); beep(900, .12, 'square', .14, .1); }
 
 /* ================= УТИЛИТЫ ================= */
 
@@ -400,30 +505,29 @@ function shuffle(a) {
   for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; }
   return a;
 }
+function pickWrongs(ans, cands) {
+  const wrongs = new Set();
+  for (const c of shuffle(cands)) {
+    if (wrongs.size >= 3) break;
+    if (c > 0 && c !== ans && !wrongs.has(c)) wrongs.add(c);
+  }
+  return [...wrongs];
+}
 
 /* ================= ВОПРОСЫ ================= */
 
 function makeMulQuestion(a, b) {
   const ans = a * b;
-  const wrongs = new Set();
-  const cands = shuffle([(a + 1) * b, (a - 1) * b, a * (b + 1), a * (b - 1), ans + 1, ans - 1, ans + 2, ans - 2, a + b]);
-  for (const c of cands) {
-    if (wrongs.size >= 3) break;
-    if (c > 0 && c !== ans && !wrongs.has(c)) wrongs.add(c);
-  }
+  const wrongs = pickWrongs(ans, [(a + 1) * b, (a - 1) * b, a * (b + 1), a * (b - 1), ans + 1, ans - 1, ans + 2, ans - 2, a + b]);
   return { html: `${a} × ${b} = <span class="q-mark">?</span>`, plain: `${a} × ${b} = ${ans}`, answer: ans, options: shuffle([ans, ...wrongs]) };
 }
 
-function makeSostavQuestion() {
-  const sum = 8 + rnd(11);          // 8..18
+function makeSostavQuestion(maxSum) {
+  const lo = maxSum > 20 ? 20 : 8;
+  const sum = lo + rnd(maxSum - lo + 1);
   const k = 2 + rnd(sum - 4);       // 2..sum-2
   const ans = sum - k;
-  const wrongs = new Set();
-  const cands = shuffle([ans + 1, ans - 1, ans + 2, ans - 2, sum + k, ans + 3]);
-  for (const c of cands) {
-    if (wrongs.size >= 3) break;
-    if (c > 0 && c !== ans && !wrongs.has(c)) wrongs.add(c);
-  }
+  const wrongs = pickWrongs(ans, [ans + 1, ans - 1, ans + 2, ans - 2, ans + 10, ans - 10, ans + 3]);
   return { html: `${k} + <span class="q-mark">?</span> = ${sum}`, plain: `${k} + ${ans} = ${sum}`, answer: ans, options: shuffle([ans, ...wrongs]) };
 }
 
@@ -434,12 +538,17 @@ function genQuestions(level) {
     factors.forEach(a => qs.push(makeMulQuestion(a, level.table)));
     for (let i = 0; i < 2; i++) qs.push(makeMulQuestion(2 + rnd(8), level.table));
   } else {
-    for (let i = 0; i < 12; i++) qs.push(makeMulQuestion(2 + rnd(8), 2 + rnd(6)));
+    for (let i = 0; i < 12; i++) qs.push(makeMulQuestion(2 + rnd(8), 2 + rnd(8)));
   }
   if (document.getElementById('mixSostav').checked) {
-    for (let i = 0; i < 3; i++) qs.splice(1 + rnd(qs.length - 1), 0, makeSostavQuestion());
+    for (let i = 0; i < 3; i++) qs.splice(1 + rnd(qs.length - 1), 0, makeSostavQuestion(18));
   }
   return qs;
+}
+
+function makeRaceQuestion() {
+  if (document.getElementById('mixSostav').checked && Math.random() < 0.3) return makeSostavQuestion(18);
+  return makeMulQuestion(2 + rnd(8), 2 + rnd(8));
 }
 
 /* ================= ОТРИСОВКА МОДЕЛИ ================= */
@@ -505,7 +614,7 @@ function renderMenu() {
     const info = document.createElement('span');
     info.className = 'info';
     info.innerHTML = `<div class="num">${lvl.table ? '× ' + lvl.table : '🎲 РАЗНОБОЙ'}</div>
-      <div class="model-name">${locked ? '<span class="lock-hint">🔒 Собери все 6 моделей!</span>' : model.name}</div>`;
+      <div class="model-name">${locked ? '<span class="lock-hint">🔒 Собери все 8 моделей!</span>' : model.name}</div>`;
     btn.appendChild(info);
     const star = document.createElement('span');
     star.className = 'star';
@@ -514,10 +623,29 @@ function renderMenu() {
     if (!locked) btn.addEventListener('click', () => { initAudio(); startLevel(lvl); });
     box.appendChild(btn);
   }
+  // Карточка гонки
+  const raceBtn = document.createElement('button');
+  raceBtn.className = 'lvl race-card';
+  const mini = document.createElement('span');
+  mini.className = 'mini';
+  mini.appendChild(renderMini(MODELS.racer, 4));
+  raceBtn.appendChild(mini);
+  const info = document.createElement('span');
+  info.className = 'info';
+  info.innerHTML = `<div class="num">🏁 ГОНКА</div>
+    <div class="model-name">Реши пример до препятствия — или авария! Вся таблица вперемешку.</div>`;
+  raceBtn.appendChild(info);
+  const star = document.createElement('span');
+  star.className = 'star';
+  star.textContent = save.stars.race ? '⭐' : '';
+  raceBtn.appendChild(star);
+  raceBtn.addEventListener('click', () => { initAudio(); startRace(); });
+  box.appendChild(raceBtn);
+
   $('mixSostav').checked = !!save.mixSostav;
 }
 
-/* ================= ИГРОВОЙ ЦИКЛ ================= */
+/* ================= СБОРКА: ИГРОВОЙ ЦИКЛ ================= */
 
 let cur = null; // { level, model, cells, questions, qIndex, revealed }
 
@@ -593,7 +721,7 @@ function nextQuestion() {
 
 function answer(btn, val, q) {
   initAudio();
-  document.querySelectorAll('.ans').forEach(b => b.disabled = true);
+  document.querySelectorAll('#answers .ans').forEach(b => b.disabled = true);
   if (val === q.answer) {
     sndSnap();
     cur.qIndex++;
@@ -604,19 +732,77 @@ function answer(btn, val, q) {
       setTimeout(nextQuestion, 450);
     }
   } else {
-    sndCrash();
     $('question').classList.add('shake');
-    // Модель рассыпается
-    Object.values(cur.cellEls).forEach(el => {
-      if (el.classList.contains('brick')) {
-        el.style.setProperty('--spin', (rnd(720) - 360) + 'deg');
-        el.style.setProperty('--drift', (rnd(120) - 60) + 'px');
-        el.classList.add('fall');
-      }
-    });
-    $('failFormula').textContent = q.plain;
-    setTimeout(() => $('failOverlay').classList.add('on'), 900);
+    if (!q.rescued) {
+      // Шанс на спасение: состав числа до 50 на время
+      q.rescued = true;
+      sndAlarm();
+      setTimeout(() => startRescue(q), 400);
+    } else {
+      failLevel(q.plain);
+    }
   }
+}
+
+function failLevel(formulaText) {
+  sndCrash();
+  Object.values(cur.cellEls).forEach(el => {
+    if (el.classList.contains('brick')) {
+      el.style.setProperty('--spin', (rnd(720) - 360) + 'deg');
+      el.style.setProperty('--drift', (rnd(120) - 60) + 'px');
+      el.classList.add('fall');
+    }
+  });
+  $('failFormula').innerHTML = formulaText;
+  setTimeout(() => $('failOverlay').classList.add('on'), 900);
+}
+
+/* ================= СПАСЕНИЕ ================= */
+
+let rescue = null; // { q, origQ, deadline, timer }
+
+function startRescue(origQ) {
+  const q = makeSostavQuestion(50);
+  rescue = { q, origQ, deadline: performance.now() + RESCUE_MS };
+  $('rescueQuestion').innerHTML = q.html;
+  const box = $('rescueAnswers');
+  box.innerHTML = '';
+  q.options.forEach((val, i) => {
+    const b = document.createElement('button');
+    b.className = 'ans c' + i;
+    b.textContent = val;
+    b.addEventListener('click', () => rescueAnswer(val));
+    box.appendChild(b);
+  });
+  $('rescueFill').style.width = '100%';
+  $('rescueFill').style.background = 'var(--green)';
+  $('rescueOverlay').classList.add('on');
+  rescue.timer = setInterval(() => {
+    const left = rescue.deadline - performance.now();
+    const frac = Math.max(0, left / RESCUE_MS);
+    $('rescueFill').style.width = (frac * 100) + '%';
+    $('rescueFill').style.background = frac > 0.5 ? 'var(--green)' : frac > 0.25 ? 'var(--yellow)' : 'var(--red)';
+    if (left <= 0) endRescue(false, true);
+  }, 80);
+}
+
+function rescueAnswer(val) {
+  endRescue(val === rescue.q.answer, false);
+}
+
+function endRescue(success, timedOut) {
+  clearInterval(rescue.timer);
+  $('rescueOverlay').classList.remove('on');
+  if (success) {
+    sndSnap();
+    // Деталь спасена — тот же вопрос ещё раз, варианты перемешаны
+    rescue.origQ.options = shuffle(rescue.origQ.options.slice());
+    nextQuestion();
+  } else {
+    const extra = timedOut ? '' : '<br><span style="font-size:1.1rem;">' + rescue.q.plain + '</span>';
+    failLevel(rescue.origQ.plain + extra);
+  }
+  rescue = null;
 }
 
 function win() {
@@ -630,6 +816,286 @@ function win() {
   wm.innerHTML = '';
   wm.appendChild(renderMini(cur.model, 9));
   $('winOverlay').classList.add('on');
+}
+
+/* ================= ГОНКА ================= */
+
+const CANVAS_W = 720, CANVAS_H = 230;
+const CAR_X = 110, ROAD_Y = 158;
+let race = null;
+
+function startRace() {
+  const canvas = $('raceCanvas');
+  canvas.width = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const types = [];
+  const pool = ['wall', 'cones', 'ramp', 'tires'];
+  for (let i = 0; i < RACE_OBSTACLES; i++) types.push(pool[i % pool.length]);
+  shuffle(types);
+  race = {
+    active: true,
+    ctx: canvas.getContext('2d'),
+    idx: 0,
+    types,
+    phase: 'cruise',
+    phaseStart: performance.now(),
+    dash: 0,
+    q: null,
+    deadline: 0,
+    obstacle: null, // { type, x }
+    finishX: null,
+    carY: 0, carAngle: 0,
+    pieces: [],
+    stars: Array.from({ length: 26 }, () => ({ x: rnd(CANVAS_W), y: rnd(90), r: Math.random() * 1.4 + .5 }))
+  };
+  show('race');
+  $('raceQuestion').innerHTML = '';
+  $('raceAnswers').innerHTML = '';
+  $('raceMsg').textContent = 'Поехали!';
+  $('raceTimerTrack').style.visibility = 'hidden';
+  updateRaceProgress();
+  requestAnimationFrame(raceLoop);
+}
+
+function stopRace() { if (race) race.active = false; }
+
+function updateRaceProgress() {
+  $('raceProgressLabel').textContent = `Препятствия: ${race.idx} / ${RACE_OBSTACLES}`;
+}
+
+function raceAskQuestion() {
+  race.q = makeRaceQuestion();
+  race.deadline = performance.now() + RACE_MS;
+  race.obstacle = { type: race.types[race.idx], x: CANVAS_W + 50 };
+  $('raceQuestion').innerHTML = race.q.html;
+  $('raceMsg').textContent = 'Препятствие впереди! Решай скорее!';
+  $('raceTimerTrack').style.visibility = 'visible';
+  const box = $('raceAnswers');
+  box.innerHTML = '';
+  race.q.options.forEach((val, i) => {
+    const b = document.createElement('button');
+    b.className = 'ans c' + i;
+    b.textContent = val;
+    b.addEventListener('click', () => raceAnswer(val));
+    box.appendChild(b);
+  });
+  race.phase = 'question';
+  race.phaseStart = performance.now();
+}
+
+function raceAnswer(val) {
+  initAudio();
+  if (race.phase !== 'question') return;
+  document.querySelectorAll('#raceAnswers .ans').forEach(b => b.disabled = true);
+  if (val === race.q.answer) {
+    sndJump();
+    race.phase = 'pass';
+    race.phaseStart = performance.now();
+    $('raceMsg').textContent = 'Дааа! Прыжок!';
+    $('raceTimerTrack').style.visibility = 'hidden';
+  } else {
+    raceCrash();
+  }
+}
+
+function raceCrash() {
+  sndCrash();
+  race.phase = 'crash';
+  race.phaseStart = performance.now();
+  $('raceTimerTrack').style.visibility = 'hidden';
+  $('raceQuestion').innerHTML = '';
+  $('raceAnswers').innerHTML = '';
+  $('raceMsg').textContent = '';
+  race.pieces = Array.from({ length: 14 }, () => ({
+    x: CAR_X + rnd(40) - 20, y: ROAD_Y - 14 + rnd(10),
+    vx: Math.random() * 6 - 2, vy: -(Math.random() * 6 + 2),
+    rot: 0, vr: Math.random() * .4 - .2,
+    c: ['#58c14b', '#2b2b33', '#e8ecf2', '#ffd23f'][rnd(4)]
+  }));
+  setTimeout(() => {
+    if (!race || !race.active) return;
+    $('raceFailText').textContent = race.q && race.deadline - performance.now() <= 0
+      ? 'Не успел решить — машина врезалась!'
+      : 'Неверный ответ — машина врезалась!';
+    $('raceFailFormula').textContent = race.q ? race.q.plain : '';
+    $('raceFailOverlay').classList.add('on');
+  }, 1100);
+}
+
+function raceLoop(now) {
+  if (!race || !race.active) return;
+  const r = race;
+  const t = now - r.phaseStart;
+
+  // --- Логика фаз ---
+  if (r.phase === 'cruise') {
+    r.dash += 7;
+    if (t > 1200) raceAskQuestion();
+  } else if (r.phase === 'question') {
+    r.dash += 2.5;
+    const left = r.deadline - now;
+    const frac = Math.max(0, left / RACE_MS);
+    $('raceTimerFill').style.width = (frac * 100) + '%';
+    $('raceTimerFill').style.background = frac > 0.5 ? 'var(--green)' : frac > 0.25 ? 'var(--yellow)' : 'var(--red)';
+    // Препятствие подъезжает по мере таймера
+    r.obstacle.x = (CAR_X + 55) + (CANVAS_W + 50 - CAR_X - 55) * frac;
+    if (left <= 0) raceCrash();
+  } else if (r.phase === 'pass') {
+    r.dash += 9;
+    const p = Math.min(1, t / 900);
+    r.carY = -74 * Math.sin(Math.PI * p);
+    r.carAngle = -0.25 * Math.sin(Math.PI * p);
+    if (r.obstacle) r.obstacle.x -= 9;
+    if (p >= 1) {
+      r.carY = 0; r.carAngle = 0; r.obstacle = null;
+      r.idx++;
+      updateRaceProgress();
+      if (r.idx >= RACE_OBSTACLES) {
+        r.phase = 'finishing';
+        r.finishX = CANVAS_W + 60;
+        $('raceQuestion').innerHTML = '';
+        $('raceMsg').textContent = 'Финиш уже виден!';
+      } else {
+        r.phase = 'cruise';
+        $('raceQuestion').innerHTML = '';
+        $('raceAnswers').innerHTML = '';
+        $('raceMsg').textContent = 'Едем дальше…';
+      }
+      r.phaseStart = now;
+    }
+  } else if (r.phase === 'finishing') {
+    r.dash += 8;
+    r.finishX -= 6;
+    if (r.finishX <= CAR_X - 40) {
+      r.phase = 'done';
+      sndWin();
+      save.stars.race = true;
+      store(save);
+      setTimeout(() => { if (r.active) $('raceWinOverlay').classList.add('on'); }, 400);
+    }
+  } else if (r.phase === 'crash') {
+    for (const p of r.pieces) {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.45; p.rot += p.vr;
+      if (p.y > ROAD_Y + 40) { p.y = ROAD_Y + 40; p.vy *= -0.35; p.vx *= 0.8; }
+    }
+  }
+
+  drawRace(r);
+  requestAnimationFrame(raceLoop);
+}
+
+function drawRace(r) {
+  const c = r.ctx;
+  // Небо
+  c.fillStyle = '#0d1830';
+  c.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  c.fillStyle = '#f4f8ff';
+  for (const s of r.stars) { c.globalAlpha = .7; c.fillRect(s.x, s.y, s.r, s.r); }
+  c.globalAlpha = 1;
+  // Холмы
+  c.fillStyle = '#152647';
+  c.beginPath(); c.ellipse(150 - (r.dash * .15 % 900), 150, 260, 60, 0, Math.PI, 0); c.fill();
+  c.beginPath(); c.ellipse(600 - (r.dash * .15 % 900) + 300, 150, 300, 75, 0, Math.PI, 0); c.fill();
+  // Дорога
+  c.fillStyle = '#39415a';
+  c.fillRect(0, ROAD_Y, CANVAS_W, 52);
+  c.fillStyle = '#9fb3d8';
+  c.fillRect(0, ROAD_Y, CANVAS_W, 3);
+  c.fillRect(0, ROAD_Y + 49, CANVAS_W, 3);
+  // Разметка
+  c.fillStyle = '#ffd23f';
+  for (let x = -(r.dash % 46); x < CANVAS_W; x += 46) c.fillRect(x, ROAD_Y + 25, 24, 4);
+
+  // Финиш
+  if (r.finishX !== null && r.phase !== 'done' || r.phase === 'done') {
+    if (r.finishX !== null) drawFinish(c, r.finishX);
+  }
+  // Препятствие
+  if (r.obstacle) drawObstacle(c, r.obstacle);
+  // Машина
+  if (r.phase === 'crash') {
+    for (const p of r.pieces) {
+      c.save(); c.translate(p.x, p.y); c.rotate(p.rot);
+      c.fillStyle = p.c; c.fillRect(-5, -4, 10, 8);
+      c.restore();
+    }
+  } else {
+    drawCar(c, CAR_X, ROAD_Y - 2 + r.carY, r.carAngle, r.dash);
+  }
+}
+
+function drawCar(c, x, y, angle, dash) {
+  c.save();
+  c.translate(x, y);
+  c.rotate(angle);
+  const bounce = Math.sin(dash * .3) * 1.2;
+  c.translate(0, bounce * .4);
+  // Корпус
+  c.fillStyle = '#58c14b';
+  c.fillRect(-30, -20, 60, 13);
+  c.fillRect(18, -24, 14, 6);            // нос
+  c.fillStyle = '#3d9a33';
+  c.fillRect(-30, -10, 60, 3);
+  // Кабина
+  c.fillStyle = '#e8ecf2';
+  c.fillRect(-12, -30, 18, 10);
+  c.fillStyle = '#58c14b';
+  c.fillRect(-16, -32, 6, 12);           // спойлер-стойка
+  c.fillStyle = '#ffd23f';
+  c.fillRect(-32, -30, 8, 4);            // антикрыло
+  // Колёса
+  for (const wx of [-18, 18]) {
+    c.fillStyle = '#2b2b33';
+    c.beginPath(); c.arc(wx, -2, 9, 0, 7); c.fill();
+    c.fillStyle = '#9aa7b8';
+    c.beginPath(); c.arc(wx, -2, 4, 0, 7); c.fill();
+  }
+  c.restore();
+}
+
+function drawObstacle(c, ob) {
+  const x = ob.x, base = ROAD_Y;
+  if (ob.type === 'wall') {
+    const cols = ['#e84f3d', '#ffd23f'];
+    for (let row = 0; row < 3; row++)
+      for (let i = 0; i < 2; i++) {
+        c.fillStyle = cols[(row + i) % 2];
+        c.fillRect(x + i * 15, base - 10 - row * 10, 14, 9);
+      }
+  } else if (ob.type === 'cones') {
+    for (let i = 0; i < 3; i++) {
+      const cx = x + i * 17;
+      c.fillStyle = '#ff8b2e';
+      c.beginPath(); c.moveTo(cx, base); c.lineTo(cx + 12, base); c.lineTo(cx + 6, base - 16); c.fill();
+      c.fillStyle = '#e8ecf2';
+      c.fillRect(cx + 2, base - 7, 8, 3);
+    }
+  } else if (ob.type === 'ramp') {
+    c.fillStyle = '#ffd23f';
+    c.beginPath(); c.moveTo(x, base); c.lineTo(x + 44, base); c.lineTo(x + 44, base - 26); c.fill();
+    c.fillStyle = '#e8b02e';
+    c.beginPath(); c.moveTo(x + 8, base); c.lineTo(x + 44, base); c.lineTo(x + 44, base - 21); c.fill();
+  } else if (ob.type === 'tires') {
+    const positions = [[0, 0], [16, 0], [8, -13]];
+    for (const [dx, dy] of positions) {
+      c.fillStyle = '#2b2b33';
+      c.beginPath(); c.arc(x + 8 + dx, base - 8 + dy, 8, 0, 7); c.fill();
+      c.fillStyle = '#6b7686';
+      c.beginPath(); c.arc(x + 8 + dx, base - 8 + dy, 3, 0, 7); c.fill();
+    }
+  }
+}
+
+function drawFinish(c, x) {
+  // Столб и клетчатая арка
+  c.fillStyle = '#9aa7b8';
+  c.fillRect(x, ROAD_Y - 64, 5, 64);
+  c.fillRect(x + 75, ROAD_Y - 64, 5, 64);
+  for (let i = 0; i < 10; i++)
+    for (let j = 0; j < 2; j++) {
+      c.fillStyle = (i + j) % 2 ? '#e8ecf2' : '#2b2b33';
+      c.fillRect(x + i * 8, ROAD_Y - 64 + j * 8, 8, 8);
+    }
 }
 
 /* ================= КНОПКИ ================= */
@@ -647,6 +1113,21 @@ $('winMenuBtn').addEventListener('click', () => {
   renderMenu(); show('menu');
 });
 $('backBtn').addEventListener('click', () => { renderMenu(); show('menu'); });
+
+$('raceBackBtn').addEventListener('click', () => { stopRace(); renderMenu(); show('menu'); });
+$('raceRetryBtn').addEventListener('click', () => {
+  $('raceFailOverlay').classList.remove('on');
+  stopRace(); startRace();
+});
+$('raceFailMenuBtn').addEventListener('click', () => {
+  $('raceFailOverlay').classList.remove('on');
+  stopRace(); renderMenu(); show('menu');
+});
+$('raceWinMenuBtn').addEventListener('click', () => {
+  $('raceWinOverlay').classList.remove('on');
+  stopRace(); renderMenu(); show('menu');
+});
+
 $('mixSostav').addEventListener('change', e => { save.mixSostav = e.target.checked; store(save); });
 
 renderMenu();
