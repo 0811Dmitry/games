@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>БРИГАДА 8 — Рыцарь на спичке</title>
+<title>БРИГАДА 8 — Рыцарь на «Спичечном коробке»</title>
 <style>
   :root {
     --ink: #fff4e6;
@@ -53,7 +53,8 @@
     flex-direction: column;
     align-items: center; justify-content: center;
     text-align: center;
-    padding: 22px;
+    padding: 18px;
+    overflow-y: auto;
     background:
       radial-gradient(ellipse at 50% 30%, rgba(255,120,40,.22), transparent 60%),
       linear-gradient(180deg, rgba(14,7,26,.92), rgba(20,9,30,.97));
@@ -72,7 +73,7 @@
   }
   h1 {
     font-family: var(--font-display);
-    font-size: clamp(2.2rem, 9vw, 4.4rem);
+    font-size: clamp(1.6rem, min(9vw, 13vh), 4.4rem);
     line-height: .95;
     margin: 0 0 4px;
     letter-spacing: .02em;
@@ -91,28 +92,28 @@
   }
   .sub {
     font-family: var(--font-display);
-    font-size: clamp(.85rem, 3vw, 1.15rem);
+    font-size: clamp(.78rem, min(3vw, 3.6vh), 1.15rem);
     color: var(--ink);
     letter-spacing: .04em;
-    margin: 10px 0 2px;
+    margin: 8px 0 2px;
     text-shadow: 0 2px 10px rgba(0,0,0,.7);
   }
   .who {
     color: var(--ink-dim);
     font-size: clamp(.8rem, 2.6vw, .95rem);
-    margin-bottom: 16px;
+    margin-bottom: 10px;
   }
   .rules {
     max-width: 30em;
-    font-size: clamp(.82rem, 2.7vw, .98rem);
-    line-height: 1.65;
+    font-size: clamp(.72rem, min(2.7vw, 2.9vh), .98rem);
+    line-height: 1.55;
     color: var(--ink);
     background: rgba(255,255,255,.06);
     border: 1px solid rgba(255,255,255,.14);
     border-left: 4px solid var(--flame);
     border-radius: 10px;
-    padding: 12px 16px;
-    margin: 0 0 18px;
+    padding: 10px 14px;
+    margin: 0 0 10px;
     text-align: left;
   }
   .rules b { color: var(--gold); }
@@ -129,13 +130,13 @@
 
   .btn {
     font-family: var(--font-display);
-    font-size: clamp(1rem, 4vw, 1.35rem);
+    font-size: clamp(.92rem, min(4vw, 4.6vh), 1.35rem);
     letter-spacing: .06em;
     color: #2a0f06;
     background: linear-gradient(180deg, #ffd66a, #ff8a2b 70%, #ef5f1c);
     border: 3px solid #fff0c4;
     border-radius: 12px;
-    padding: 12px 34px;
+    padding: 10px 30px;
     cursor: pointer;
     box-shadow: 0 6px 0 #a8321a, 0 12px 26px rgba(255,110,40,.35);
     transition: transform .06s, box-shadow .06s;
@@ -144,7 +145,7 @@
   .btn.ghost {
     background: transparent; color: var(--ink-dim);
     border: 2px solid rgba(255,255,255,.2);
-    box-shadow: none; font-size: .85rem; padding: 8px 18px; margin-top: 14px;
+    box-shadow: none; font-size: .8rem; padding: 6px 16px; margin-top: 8px;
   }
   .btn.ghost:active { transform: translateY(2px); }
   .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center; }
@@ -192,6 +193,26 @@
   @keyframes pulse { 0%,100% { transform: scale(1) } 50% { transform: scale(1.08) } }
   @media (hover: hover) and (pointer: fine) { #ultBtn.on { display: none; } }
 
+  /* Невысокий экран — ужимаем стартовый брифинг, чтобы влез целиком */
+  @media (max-height: 620px) {
+    .badge { display: none; }
+    .rules { padding: 8px 12px; margin-bottom: 8px; line-height: 1.42; }
+    .btn { padding: 8px 26px; }
+    .who { margin-bottom: 8px; }
+  }
+
+  #musicBtn {
+    position: absolute; right: 12px; top: 12px;
+    width: 38px; height: 38px; border-radius: 50%;
+    font-size: 17px; line-height: 1; cursor: pointer;
+    color: var(--ink);
+    background: rgba(20,10,30,.55);
+    border: 2px solid rgba(255,255,255,.22);
+    z-index: 6; padding: 0;
+  }
+  #musicBtn.off { opacity: .45; }
+  @media (hover: none) and (pointer: coarse) { #musicBtn { top: auto; bottom: 16px; left: 16px; right: auto; width: 46px; height: 46px; font-size: 20px; } }
+
   #rotate {
     position: absolute; inset: auto 0 0 0;
     display: none; justify-content: center;
@@ -206,15 +227,16 @@
   <canvas id="c"></canvas>
 
   <div id="ultBtn">ЭКС-<br>КАЛИБУР</div>
+  <button id="musicBtn" title="Музыка вкл/выкл">🎵</button>
   <div id="rotate">📱 Поверни телефон боком — будет удобнее</div>
 
   <div class="screen on" id="startScreen">
     <div class="badge">SPECIAL FIRE FORCE · COMPANY 8</div>
     <h1>БРИГАДА <span class="n">8</span></h1>
-    <div class="sub">УРОВЕНЬ 1 — РЫЦАРЬ НА СПИЧКЕ</div>
-    <div class="who">Артур Бойл · меч Экскалибур · горящий Токио</div>
+    <div class="sub">УРОВЕНЬ 1 — РЫЦАРЬ НА «СПИЧЕЧНОМ КОРОБКЕ»</div>
+    <div class="who">Артур Бойл · меч Экскалибур · броневик «Спичечный коробок»</div>
     <p class="rules">
-      Коробок несётся по огненной улице. <b>Вверх / вниз</b> — сменить полосу,
+      Броневик бригады несётся по огненной улице. <b>Вверх / вниз</b> — сменить полосу,
       <b>удар</b> — рубить огневиков и упокоить их.<br>
       Горящие машины рубить нельзя — только объезжать!<br>
       Бей без промаха — копится <b>Рыцарский дух</b>, и меч синеет.
@@ -330,6 +352,7 @@ const Snd = (() => {
   }
   return {
     on,
+    ctx: () => ac,
     slash() { noise(.14, .09, 1600); tone(900, 320, .12, 'sawtooth', .07); },
     kill()  { tone(680, 1300, .12, 'triangle', .13); tone(320, 90, .2, 'sine', .12, .02); },
     hurt()  { tone(180, 60, .38, 'sawtooth', .17); noise(.2, .08, 300); },
@@ -338,6 +361,161 @@ const Snd = (() => {
     ult()   { tone(1400, 180, .7, 'sawtooth', .16); tone(220, 60, .8, 'sine', .14, .05); noise(.5, .1, 500); },
     win()   { [523, 659, 784, 1046].forEach((f, i) => tone(f, f, .16, 'triangle', .13, i * .11)); },
     lose()  { [440, 349, 262].forEach((f, i) => tone(f, f * .96, .3, 'triangle', .13, i * .16)); }
+  };
+})();
+
+// ---------- Музыка: свой рок-луп в духе аниме-опенинга ----------
+// Гитара — пила через вейвшейпер (перегруз), бас, живой барабанный рисунок.
+// Ходы: Em → C → G → D, 160 ударов в минуту, галоп восьмыми.
+const Music = (() => {
+  const BPM = 160, STEP = (60 / BPM) / 4;      // шестнадцатая
+  const BARS = [82.41, 65.41, 98.00, 73.42];   // E2, C2, G2, D2
+  const LEAD = [                                // мотив по ми-минорной пентатонике
+    [659.3, 0, 784.0, 0, 659.3, 0, 587.3, 0, 493.9, 0, 0, 0, 587.3, 0, 0, 0],
+    [523.3, 0, 587.3, 0, 659.3, 0, 0, 0, 587.3, 0, 523.3, 0, 0, 0, 0, 0],
+    [493.9, 0, 587.3, 0, 784.0, 0, 659.3, 0, 587.3, 0, 0, 0, 493.9, 0, 0, 0],
+    [587.3, 0, 659.3, 0, 587.3, 0, 493.9, 0, 440.0, 0, 493.9, 0, 587.3, 0, 659.3, 0]
+  ];
+  // барабаны: 16 шагов на такт
+  const KICK = [1,0,0,1, 0,0,1,0, 1,0,0,1, 0,0,0,0];
+  const SNARE= [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,1];
+  const CHUG = [1,0,1,1, 0,1,1,0, 1,0,1,1, 0,1,0,1];   // ритм гитары
+
+  let ac = null, master = null, drive = null, timer = null, next = 0, step = 0;
+  let playing = false, enabled = true;
+  try { enabled = localStorage.getItem('brigada8.music') !== 'off'; } catch (e) {}
+
+  function shaper(amount) {
+    const n = 1024, c = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const x = i * 2 / n - 1;
+      c[i] = (1 + amount) * x / (1 + amount * Math.abs(x));
+    }
+    return c;
+  }
+  function init() {
+    ac = Snd.ctx();
+    if (!ac || master) return !!ac;
+    master = ac.createGain();
+    master.gain.value = 0.0;
+    master.connect(ac.destination);
+    drive = ac.createWaveShaper();
+    drive.curve = shaper(14);
+    const lp = ac.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 2800;
+    drive.connect(lp); lp.connect(master);
+    return true;
+  }
+  function noiseBuf(dur) {
+    const n = Math.floor(ac.sampleRate * dur), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2);
+    return b;
+  }
+  function drum(t, kind) {
+    if (kind === 'kick') {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(155, t);
+      o.frequency.exponentialRampToValueAtTime(44, t + .11);
+      g.gain.setValueAtTime(.9, t);
+      g.gain.exponentialRampToValueAtTime(.001, t + .16);
+      o.connect(g); g.connect(master); o.start(t); o.stop(t + .18);
+    } else if (kind === 'snare') {
+      const s = ac.createBufferSource(); s.buffer = noiseBuf(.18);
+      const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1400;
+      const g = ac.createGain(); g.gain.setValueAtTime(.5, t);
+      g.gain.exponentialRampToValueAtTime(.001, t + .17);
+      s.connect(f); f.connect(g); g.connect(master); s.start(t);
+      const o = ac.createOscillator(), og = ac.createGain();
+      o.type = 'triangle'; o.frequency.setValueAtTime(210, t);
+      og.gain.setValueAtTime(.28, t); og.gain.exponentialRampToValueAtTime(.001, t + .1);
+      o.connect(og); og.connect(master); o.start(t); o.stop(t + .12);
+    } else {                                   // хэт
+      const s = ac.createBufferSource(); s.buffer = noiseBuf(.05);
+      const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 8000;
+      const g = ac.createGain(); g.gain.setValueAtTime(.16, t);
+      g.gain.exponentialRampToValueAtTime(.001, t + .05);
+      s.connect(f); f.connect(g); g.connect(master); s.start(t);
+    }
+  }
+  function guitar(t, freq, dur, vol) {
+    for (const f of [freq * 2, freq * 3]) {     // квинт-аккорд
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sawtooth'; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(vol, t + .008);
+      g.gain.exponentialRampToValueAtTime(.001, t + dur);
+      o.connect(g); g.connect(drive); o.start(t); o.stop(t + dur + .02);
+    }
+  }
+  function bass(t, freq, dur) {
+    const o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter();
+    o.type = 'sawtooth'; o.frequency.value = freq;
+    f.type = 'lowpass'; f.frequency.value = 480;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(.34, t + .01);
+    g.gain.exponentialRampToValueAtTime(.001, t + dur);
+    o.connect(f); f.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .02);
+  }
+  function lead(t, freq) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'square'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(.13, t + .01);
+    g.gain.exponentialRampToValueAtTime(.001, t + STEP * 2.2);
+    o.connect(g); g.connect(drive); o.start(t); o.stop(t + STEP * 2.4);
+  }
+
+  function schedule(i, t) {
+    const bar = (i >> 4) & 3, s = i & 15;
+    const root = BARS[bar];
+    if (KICK[s]) drum(t, 'kick');
+    if (SNARE[s]) drum(t, 'snare');
+    if (s % 2 === 0) drum(t, 'hat');
+    if (CHUG[s]) guitar(t, root, STEP * (s % 4 === 0 ? 2.6 : 1.5), .085);
+    if (s % 2 === 0) bass(t, root, STEP * 1.7);
+    // соло включается, когда игрок держит комбо
+    if (typeof G !== 'undefined' && G.mode === 'play' && G.combo >= 8) {
+      const n = LEAD[bar][s];
+      if (n) lead(t, n);
+    }
+  }
+  function tick() {
+    if (!ac) return;
+    while (next < ac.currentTime + 0.15) {
+      schedule(step, next);
+      next += STEP;
+      step = (step + 1) % 64;
+    }
+  }
+  return {
+    isOn: () => enabled,
+    start() {
+      if (!enabled || playing || !init()) return;
+      playing = true;
+      step = 0; next = ac.currentTime + 0.08;
+      master.gain.cancelScheduledValues(ac.currentTime);
+      master.gain.setValueAtTime(0, ac.currentTime);
+      master.gain.linearRampToValueAtTime(0.22, ac.currentTime + 0.6);
+      timer = setInterval(tick, 25);
+      tick();
+    },
+    stop(fade) {
+      if (!playing) return;
+      playing = false;
+      clearInterval(timer); timer = null;
+      const t = ac.currentTime;
+      master.gain.cancelScheduledValues(t);
+      master.gain.setValueAtTime(master.gain.value, t);
+      master.gain.linearRampToValueAtTime(0, t + (fade == null ? .5 : fade));
+    },
+    toggle() {
+      enabled = !enabled;
+      try { localStorage.setItem('brigada8.music', enabled ? 'on' : 'off'); } catch (e) {}
+      if (!enabled) this.stop(.2);
+      else if (G.mode === 'play') this.start();
+      return enabled;
+    }
   };
 })();
 
@@ -556,7 +734,18 @@ function startGame() {
   startScreen.classList.remove('on');
   resultScreen.classList.remove('on');
   reset();
+  Music.start();
 }
+
+const musicBtn = document.getElementById('musicBtn');
+if (!Music.isOn()) musicBtn.classList.add('off');
+function toggleMusic(e) {
+  e.preventDefault(); e.stopPropagation();
+  Snd.on();
+  musicBtn.classList.toggle('off', !Music.toggle());
+}
+musicBtn.addEventListener('click', toggleMusic);
+musicBtn.addEventListener('touchstart', toggleMusic, { passive: false });
 
 // ============================================================
 //  Логика
@@ -650,7 +839,7 @@ function update(dt) {
 
   // выхлоп коробка
   if (Math.random() < .6) {
-    part(ax - 46, lerp(ly[0], ly[2], G.laneF / 2) - 8, {
+    part(ax - 102, lerp(ly[0], ly[2], G.laneF / 2) - 34, {
       vx: rnd(-220, -90), vy: rnd(-30, 10), life: rnd(.2, .45), max: .45,
       size: rnd(2, 5), col: pick(['255,190,80', '255,120,50'])
     });
@@ -704,8 +893,8 @@ function update(dt) {
       }
     }
 
-    // столкновение
-    if (Math.abs(G.laneF - e.lane) < .5 && Math.abs(e.x - ax) < 42) {
+    // столкновение — огневик дотянулся до носа броневика
+    if (Math.abs(G.laneF - e.lane) < .5 && e.x - ax < 78 && e.x - ax > -46) {
       hurt();
       e.dying = .3;
       burst(e.x, ly[e.lane] - 50, 12, '255,120,60');
@@ -736,7 +925,7 @@ function update(dt) {
     if (attacking && Math.abs(G.laneF - o.lane) < .45 && o.x > ax - 40 && o.x < ax + 150) {
       burst(o.x - 40, ly[o.lane] - 50, 6, '200,220,255');   // меч звенит по железу
     }
-    if (Math.abs(G.laneF - o.lane) < .55 && Math.abs(o.x - ax) < 62) {
+    if (Math.abs(G.laneF - o.lane) < .55 && o.x - ax < 100 && o.x - ax > -70) {
       hurt(); o.dead = .3;
     }
     if (o.x < -180) G.obstacles.splice(i, 1);
@@ -803,6 +992,7 @@ function endLevel(won) {
   document.getElementById('bestLine').textContent =
     isNew ? '🏅 Новый рекорд!' : 'Рекорд: ' + best.score + ' (ранг ' + best.rank + ')';
 
+  Music.stop(.6);
   won ? Snd.win() : Snd.lose();
   setTimeout(() => resultScreen.classList.add('on'), 650);
 }
@@ -1146,40 +1336,114 @@ function drawArthur() {
   const bob = Math.sin(G.bob * 9) * 2.5;
 
   // выхлоп/след
-  glow(-40, -14, 60, '255,150,50', .5);
+  glow(-86, -20, 66, '255,150,50', .5);
 
-  // ==== спичечный коробок ====
+  // ==== «Спичечный коробок» — серый броневик 8-й бригады ====
   ctx.save();
   ctx.translate(0, bob * .3);
+
   // тень
-  ctx.fillStyle = 'rgba(0,0,0,.35)';
-  ctx.beginPath(); ctx.ellipse(0, 4, 66, 9, 0, 0, 7); ctx.fill();
-  // корпус
-  const bg = ctx.createLinearGradient(0, -30, 0, 4);
-  bg.addColorStop(0, '#ff6d4a'); bg.addColorStop(1, '#c02a1e');
+  ctx.fillStyle = 'rgba(0,0,0,.4)';
+  ctx.beginPath(); ctx.ellipse(-12, 3, 82, 10, 0, 0, 7); ctx.fill();
+
+  // колёса
+  for (const wx of [-56, 16]) {
+    ctx.fillStyle = '#15121a';
+    ctx.beginPath(); ctx.arc(wx, -15, 16, 0, 7); ctx.fill();
+    ctx.fillStyle = '#5d626e';
+    ctx.beginPath(); ctx.arc(wx, -15, 8, 0, 7); ctx.fill();
+    ctx.fillStyle = '#2b2f38';
+    ctx.beginPath(); ctx.arc(wx, -15, 3.4, 0, 7); ctx.fill();
+  }
+
+  // рама
+  ctx.fillStyle = '#24272f';
+  roundRect(-88, -26, 148, 10, 3); ctx.fill();
+
+  // бронекорпус
+  const bg = ctx.createLinearGradient(0, -56, 0, -20);
+  bg.addColorStop(0, '#9aa0a8');
+  bg.addColorStop(.55, '#767c86');
+  bg.addColorStop(1, '#4c5158');
   ctx.fillStyle = bg;
-  roundRect(-62, -30, 124, 34, 7); ctx.fill();
-  // тёрка
-  ctx.fillStyle = '#5a3a2e';
-  roundRect(-58, -22, 116, 12, 4); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.10)';
-  for (let i = 0; i < 16; i++) ctx.fillRect(-56 + i * 7.2, -20, 3, 8);
-  // ярлык
-  ctx.fillStyle = '#ffd23f';
-  roundRect(-26, -30, 52, 9, 3); ctx.fill();
-  ctx.fillStyle = '#8a2115';
-  ctx.font = '900 8px ' + FONT; ctx.textAlign = 'center';
-  ctx.fillText('БРИГАДА 8', 0, -23);
-  // спички-полозья
-  ctx.strokeStyle = '#e8c98a'; ctx.lineWidth = 5;
-  ctx.beginPath(); ctx.moveTo(-70, 2); ctx.lineTo(70, 2); ctx.stroke();
-  ctx.fillStyle = '#ff4b2b';
-  ctx.beginPath(); ctx.arc(72, 2, 5, 0, 7); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-88, -22);
+  ctx.lineTo(-88, -50);
+  ctx.lineTo(-80, -56);
+  ctx.lineTo(26, -56);
+  ctx.lineTo(34, -46);
+  ctx.lineTo(58, -44);
+  ctx.lineTo(62, -30);
+  ctx.lineTo(60, -22);
+  ctx.closePath(); ctx.fill();
+
+  // панели и заклёпки
+  ctx.strokeStyle = 'rgba(30,32,40,.5)'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-46, -56); ctx.lineTo(-46, -22);
+  ctx.moveTo(-88, -34); ctx.lineTo(26, -34);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.22)';
+  for (let i = 0; i < 9; i++) ctx.fillRect(-84 + i * 12, -53, 2, 2);
+
+  // лобовое стекло кабины
+  ctx.fillStyle = '#22405e';
+  ctx.beginPath();
+  ctx.moveTo(30, -46); ctx.lineTo(38, -44); ctx.lineTo(52, -43); ctx.lineTo(52, -32); ctx.lineTo(30, -32);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(180,225,255,.35)';
+  ctx.beginPath();
+  ctx.moveTo(32, -44); ctx.lineTo(44, -43); ctx.lineTo(34, -33); ctx.lineTo(32, -33);
+  ctx.closePath(); ctx.fill();
+
+  // предупреждающие полосы по низу
+  ctx.save();
+  ctx.beginPath(); ctx.rect(-88, -32, 148, 10); ctx.clip();
+  for (let i = -9; i < 14; i++) {
+    ctx.fillStyle = i % 2 ? '#ffcf47' : '#1f2229';
+    ctx.beginPath();
+    ctx.moveTo(-88 + i * 12, -22); ctx.lineTo(-82 + i * 12, -32);
+    ctx.lineTo(-70 + i * 12, -32); ctx.lineTo(-76 + i * 12, -22);
+    ctx.closePath(); ctx.fill();
+  }
   ctx.restore();
 
-  // ==== Артур ====
+  // эмблема бригады
+  ctx.fillStyle = '#e0533a';
+  ctx.beginPath(); ctx.arc(-64, -44, 11, 0, 7); ctx.fill();
+  ctx.fillStyle = '#fff2d0';
+  ctx.font = '900 15px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('8', -64, -43);
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = 'rgba(255,255,255,.8)';
+  ctx.font = '900 7px ' + FONT;
+  ctx.fillText('SPECIAL FIRE FORCE', -22, -44);
+
+  // бампер и фара
+  ctx.fillStyle = '#2b2f38';
+  roundRect(56, -32, 10, 14, 2); ctx.fill();
+  ctx.fillStyle = '#ffe9a8';
+  roundRect(54, -40, 7, 6, 2); ctx.fill();
+  glow(58, -37, 34, '255,220,150', .5);
+
+  // мигалка на крыше
+  const bl = Math.floor(G.t * 6) % 2;
+  ctx.fillStyle = '#2b2f38';
+  roundRect(-6, -62, 30, 6, 2); ctx.fill();
+  ctx.fillStyle = bl ? '#ff4b3a' : '#5aa9e6';
+  roundRect(-4, -64, 12, 6, 2); ctx.fill();
+  ctx.fillStyle = bl ? '#5aa9e6' : '#ff4b3a';
+  roundRect(10, -64, 12, 6, 2); ctx.fill();
+  glow(bl ? 2 : 16, -61, 30, bl ? '255,80,60' : '90,170,230', .55);
+
+  // выхлоп сзади
+  ctx.fillStyle = '#2b2f38';
+  ctx.fillRect(-94, -34, 8, 6);
+  ctx.restore();
+
+  // ==== Артур на крыше ====
   ctx.save();
-  ctx.translate(-2, -28 + bob);
+  ctx.translate(-30, -56 + bob);
 
   // плащ развевается
   ctx.fillStyle = '#2c3f8f';
@@ -1271,8 +1535,8 @@ function drawArthur() {
   ctx.restore();  // общий
 
   // свечение меча в мировых координатах
-  const gx = x + Math.cos(armA) * 90 * hs + 10 * hs;
-  const gy = y - 68 * hs + Math.sin(armA) * 90 * hs;
+  const gx = x + (Math.cos(armA) * 90 - 20) * hs;
+  const gy = y + (Math.sin(armA) * 90 - 96) * hs;
   glow(gx, gy, 70 * hs, spiritT >= 1 ? '90,200,255' : '255,190,110', .45);
 
   // дуга удара — чёткий полумесяц со светящейся кромкой
@@ -1282,7 +1546,7 @@ function drawArthur() {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = Math.sin(Math.PI * Math.min(1, k * 1.15)) * .95;
-    ctx.translate(x + 12 * hs, y - 68 * hs);
+    ctx.translate(x - 20 * hs, y - 96 * hs);
     ctx.scale(hs, hs);
     const a0 = -2.3 + 3.05 * Math.pow(Math.max(0, k - .16), .5);
     const R = 150, r = 96;
@@ -1393,18 +1657,19 @@ function drawHUD() {
     }
   }
 
-  // очки + комбо
+  // очки + комбо (справа сверху оставляем место под кнопку музыки)
+  const rx = VW - pad - (isTouch ? 0 : 46);
   ctx.textAlign = 'right';
   ctx.fillStyle = '#fff2d0';
   ctx.font = '900 26px ' + FONT;
-  ctx.fillText(String(G.score), VW - pad, pad + 28);
+  ctx.fillText(String(G.score), rx, pad + 28);
   if (G.combo > 1) {
     const mult = 1 + Math.min(4, Math.floor(G.combo / 4));
     ctx.fillStyle = mult >= 4 ? '#8fe6ff' : '#ffd23f';
     ctx.font = '900 20px ' + FONT;
     const sc2 = 1 + Math.max(0, .3 - (G.t % 1)) * .3;
     ctx.save();
-    ctx.translate(VW - pad, pad + 54); ctx.scale(sc2, sc2);
+    ctx.translate(rx, pad + 54); ctx.scale(sc2, sc2);
     ctx.fillText('КОМБО x' + mult + '  (' + G.combo + ')', 0, 0);
     ctx.restore();
   }
@@ -1590,11 +1855,16 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-window.G = G; window.__spawn = doSpawn; window.__dbg = () => ({ VW, VH, ax: playerX() });
+window.G = G; window.__spawn = doSpawn; window.__snd = Snd; window.__music = Music;
+window.__dbg = () => ({ VW, VH, ax: playerX() });
 layout();
 requestAnimationFrame(frame);
 
-document.addEventListener('visibilitychange', () => { last = performance.now(); });
+document.addEventListener('visibilitychange', () => {
+  last = performance.now();
+  if (document.hidden) Music.stop(.15);
+  else if (G.mode === 'play') Music.start();
+});
 })();
 </script>
 </body>
