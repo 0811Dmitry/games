@@ -291,9 +291,9 @@
       <button class="lvl" data-level="2">
         <span class="lvl-n">УРОВЕНЬ 2</span>
         <span class="lvl-t">ЛЕЙТЕНАНТ ХИНАВА</span>
-        <span class="lvl-d">Снимает огневиков издалека огненными пулями — с крыш и с дороги. Патронов мало, по людям не стрелять!</span>
-        <span class="lvl-k desk">мышь — прицел · клик — выстрел · E супер пуля</span>
-        <span class="lvl-k touch">тап по цели — выстрел, кнопка — супер пуля</span>
+        <span class="lvl-d">Оборона ядра Аматэрасу: ставь огневые посты на площадки, добивай тапом по огневику. В конце придёт босс!</span>
+        <span class="lvl-k desk">клик по площадке — пост · по огневику — выстрел · E супер пуля</span>
+        <span class="lvl-k touch">тап по площадке — пост, по огневику — выстрел</span>
         <span class="lvl-best" id="best2"></span>
       </button>
     </div>
@@ -626,15 +626,11 @@ buildCity();
 const GOAL = 19000;      // длина вызова в «метрах» — примерно минута езды
 const MAX_HEARTS = 4;
 
-const MAG = 6;           // патронов в обойме у Хинавы
-
 const G = {
   mode: 'menu',        // menu | play | over
   level: 1,            // 1 — Артур (меч), 2 — Хинава (стрельба)
-  // --- уровень 2 ---
-  targets: [], bullets: [], bombs: [],
-  aim: { x: 0, y: 0 }, ammo: MAG, reload: 0, recoil: 0,
-  shots: 0, hits: 0, superShot: null, keys: {},
+  // --- уровень 2: оборона Аматэрасу ---
+  def: null, superShot: null, keys: {},
   t: 0, dist: 0, speed: 250,
   laneF: 1, lane: 1,
   hearts: MAX_HEARTS, score: 0, combo: 0, maxCombo: 0,
@@ -654,10 +650,8 @@ function reset(level) {
   G.mode = 'play'; G.level = level || 1;
   G.t = 0; G.dist = 0; G.speed = 250;
   G.laneF = 1; G.lane = 1;
-  G.targets = []; G.bullets = []; G.bombs = [];
-  G.ammo = MAG; G.reload = 0; G.recoil = 0; G.shots = 0; G.hits = 0;
   G.superShot = null; G.keys = {};
-  G.aim = { x: VW * 0.6, y: VH * 0.5 };
+  if (G.level === 2) defInit(); else G.def = null;
   G.hearts = MAX_HEARTS; G.score = 0; G.combo = 0; G.maxCombo = 0;
   G.kills = 0; G.spawned = 0;
   G.spirit = 0; G.ultReady = false;
@@ -731,8 +725,10 @@ function doSpawn() {
 }
 
 // ============================================================
-//  Уровень 2 — Хинава: прицел, выстрелы, бомбы, супер пуля
+//  Уровень 2 — Хинава: оборона Аматэрасу
 // ============================================================
+//  Огневики идут тремя дорожками к плазменному ядру. Ставим огневые
+//  посты на площадки, Хинава добивает тапом, в конце приходит босс.
 
 // Экранная точка из координат указателя
 function toLogical(clientX, clientY) {
@@ -740,299 +736,276 @@ function toLogical(clientX, clientY) {
   return { x: (clientX - r.left) / SCALE, y: (clientY - r.top) / SCALE - OY };
 }
 
-// Плечо стрелка и дуло — отсюда летят пули
-function riderShoulder() {
-  const ly = laneY();
-  const y = lerp(ly[0], ly[2], G.laneF / 2);
-  const hs = lerp(LANE_SCALE[0], LANE_SCALE[2], G.laneF / 2) * 1.3;
-  return { x: playerX() - 20 * hs, y: y - 96 * hs, hs };
-}
-function muzzle() {
-  const sh = riderShoulder();
-  const a = Math.atan2(G.aim.y - sh.y, G.aim.x - sh.x);
-  return { x: sh.x + Math.cos(a) * 54 * sh.hs, y: sh.y + Math.sin(a) * 54 * sh.hs, a };
+const POST_COST = 30, UP_COST = 45, POST_R = 150;
+const WAVES = [
+  { n: 6,  kinds: ['walk'],                 gap: 1.25 },
+  { n: 8,  kinds: ['walk', 'fast'],         gap: 1.1 },
+  { n: 9,  kinds: ['walk', 'fast', 'tank'], gap: 1.0 },
+  { n: 11, kinds: ['fast', 'tank', 'walk'], gap: .9 },
+  { n: 13, kinds: ['fast', 'tank', 'walk'], gap: .8 },
+  { n: 1,  kinds: ['boss'],                 gap: 2, boss: true }
+];
+const FOE = {
+  walk: { hp: 3,   sp: 55, spark: 8,   sc: 1 },
+  fast: { hp: 2,   sp: 92, spark: 8,   sc: .9 },
+  tank: { hp: 8,   sp: 36, spark: 15,  sc: 1.25 },
+  boss: { hp: 220, sp: 24, spark: 150, sc: 1.9 }
+};
+
+const defLaneY = () => [VH - 172, VH - 112, VH - 50];
+const CORE_X = () => Math.max(96, VW * 0.11);
+
+function defSlots() {
+  const ly = defLaneY();
+  const rows = [(ly[0] + ly[1]) / 2 + 4, (ly[1] + ly[2]) / 2 + 4];
+  const cols = [0.34, 0.48, 0.62, 0.76];
+  const out = [];
+  for (const r of rows) for (const c of cols) out.push({ x: VW * c, y: r });
+  return out;
 }
 
-// Экранная геометрия цели — её же используем для попаданий
-function targetGeom(t) {
-  if (t.kind === 'roof') return { y: horizon() - t.ry, s: t.s };
-  if (t.kind === 'civil') return { y: horizon() + 18, s: .62 };
-  return { y: laneY()[t.lane], s: LANE_SCALE[t.lane] };
+function defInit() {
+  G.def = {
+    wave: 0, phase: 'prep', timer: 4, spawnLeft: 0, spawnT: 0,
+    sparks: 70, shield: 5, maxShield: 5,
+    posts: defSlots().map(s => ({ x: s.x, y: s.y, level: 0, cool: 0, stun: 0, pulse: 0 })),
+    foes: [], shots: [], hinawaCool: 0, hover: -1, bossIn: false
+  };
 }
 
-function spawnTarget() {
-  const p = G.dist / GOAL;
-  const r = Math.random();
-  if (r < .17) {
-    G.targets.push({ kind: 'civil', x: VW + rnd(20, 80), seed: rnd(0, 100), ph: rnd(0, 10), dying: 0, scared: 0 });
-  } else if (r < .46) {
-    G.targets.push({
-      kind: 'roof', x: VW + rnd(20, 90), ry: rnd(60, 185), s: rnd(.5, .66), hp: 1,
-      seed: rnd(0, 100), ph: rnd(0, 10), dying: 0, throwT: rnd(1.2, 2.4)
-    });
-    G.spawned++;
-  } else {
-    const big = p > .3 && Math.random() < .2;
-    G.targets.push({
-      kind: 'road', x: VW + rnd(20, 80), lane: Math.floor(rnd(0, 3)),
-      hp: big ? 2 : 1, big, seed: rnd(0, 100), ph: rnd(0, 10), dying: 0,
-      walk: rnd(30, 80) + p * 70
-    });
-    G.spawned++;
-  }
+function defSpawn(kind) {
+  const f = FOE[kind];
+  const lane = kind === 'boss' ? 1 : Math.floor(rnd(0, 3));
+  G.def.foes.push({
+    kind, lane, x: VW + rnd(20, 70), hp: f.hp, maxHp: f.hp, sp: f.sp,
+    sc: f.sc, seed: rnd(0, 100), ph: rnd(0, 10), dying: 0, hit: 0
+  });
+  G.spawned++;
 }
 
-// Что находится под прицелом (щедрые рамки — ребёнку должно быть не обидно)
-function pickTarget(tx, ty) {
-  let best = null, bestD = 1e9;
-  for (const b of G.bombs) {
-    if (b.dead) continue;
-    const d = Math.hypot(b.x - tx, b.y - ty);
-    if (d < 26 && d < bestD) { best = b; bestD = d; }
-  }
-  for (const t of G.targets) {
-    if (t.dying) continue;
-    const g = targetGeom(t);
-    const halfW = (t.kind === 'civil' ? 26 : 34) * g.s + 8;
-    const top = g.y - (t.kind === 'civil' ? 78 : 118) * g.s - 6;
-    if (tx > t.x - halfW && tx < t.x + halfW && ty > top && ty < g.y + 10) {
-      const d = Math.hypot(t.x - tx, (g.y - 50 * g.s) - ty);
-      if (d < bestD) { best = t; bestD = d; }
-    }
-  }
-  return best;
-}
-
-function killTarget(t, bonus) {
-  const g = targetGeom(t);
-  t.dying = .45;
+function defKill(f) {
+  const fy = defLaneY()[f.lane];
+  f.dying = .45;
   G.kills++;
-  G.combo++;
-  G.maxCombo = Math.max(G.maxCombo, G.combo);
-  const mult = 1 + Math.min(4, Math.floor(G.combo / 4));
-  const gain = (bonus || (t.kind === 'roof' ? 150 : 100)) * mult;
-  G.score += gain;
-  G.spirit = Math.min(100, G.spirit + (t.big ? 13 : 9));
+  G.def.sparks += FOE[f.kind].spark;
+  G.score += FOE[f.kind].spark * 10;
+  G.spirit = Math.min(100, G.spirit + (f.kind === 'boss' ? 100 : 7));
   if (G.spirit >= 100 && !G.ultReady && !G.superShot) {
     G.ultReady = true;
     ultBtn.classList.add('on');
     Snd.charge();
-    pop(playerX() + 60, VH - 300, 'СУПЕР ПУЛЯ ГОТОВА!', '#8fe6ff', 24);
   }
-  G.hitStop = Math.max(G.hitStop, .05);
-  G.flash = Math.max(G.flash, .26); G.flashColor = '255,255,255';
   Snd.kill();
-  burst(t.x, g.y - 55 * g.s, 15);
-  part(t.x, g.y - 60 * g.s, { vx: rnd(-20, 20), vy: -110, life: 1.1, max: 1.1, size: 9, col: '160,230,255', kind: 'soul' });
-  pop(t.x, g.y - 108 * g.s, mult > 1 ? '+' + gain + '  x' + mult : '+' + gain, mult >= 4 ? '#8fe6ff' : '#ffd23f', 18 + mult * 2);
-  if (G.combo > 0 && G.combo % 5 === 0) pop(t.x + 26, g.y - 146 * g.s, 'ЛАТОМ!', '#fff0c0', 22);
+  burst(f.x, fy - 55 * f.sc, 16);
+  part(f.x, fy - 60 * f.sc, { vx: rnd(-20, 20), vy: -110, life: 1.1, max: 1.1, size: 9, col: '160,230,255', kind: 'soul' });
+  pop(f.x, fy - 104 * f.sc, '+' + FOE[f.kind].spark + ' искр', '#ffd23f', f.kind === 'boss' ? 34 : 20);
+  if (f.kind === 'boss') {
+    G.flash = .6; G.flashColor = '255,220,150';
+    G.shake = 20;
+    pop(VW / 2, VH * .4, 'БОСС УПОКОЕН!', '#ffd76a', 40);
+  }
 }
 
-function missShot(x, y) {
-  G.combo = 0;
-  G.spirit = Math.max(0, G.spirit - 10);
-  if (G.spirit < 100) { G.ultReady = false; ultBtn.classList.remove('on'); }
-  burst(x, y, 5, '200,200,220');
+function defDamage(f, dmg) {
+  if (f.dying) return;
+  f.hp -= dmg;
+  f.hit = .12;
+  const fy = defLaneY()[f.lane];
+  burst(f.x, fy - 55 * f.sc, 4, '255,230,170');
+  if (f.hp <= 0) defKill(f);
 }
 
-function shoot() {
-  if (G.mode !== 'play' || G.level !== 2 || G.superShot) return;
-  if (G.reload > 0) return;
-  if (G.ammo <= 0) { G.reload = 1.1; Snd.dry(); return; }
-  G.ammo--; G.shots++;
-  Snd.shot();
-  const m = muzzle();
-  const hit = pickTarget(G.aim.x, G.aim.y);
-  G.bullets.push({ x0: m.x, y0: m.y, tx: G.aim.x, ty: G.aim.y, t: 0, dur: .12, hit });
-  G.recoil = .14;
-  burst(m.x, m.y, 4, '255,220,140');
-  if (G.ammo === 0) G.reload = 1.15;
+// Тап по полю: сначала пробуем попасть по огневику, иначе — по площадке
+function defTap(x, y) {
+  if (G.mode !== 'play' || G.level !== 2) return;
+  const d = G.def;
+  const ly = defLaneY();
+  let foe = null, bestD = 1e9;
+  for (const f of d.foes) {
+    if (f.dying) continue;
+    const fy = ly[f.lane];
+    const hw = 34 * f.sc + 10;
+    if (x > f.x - hw && x < f.x + hw && y > fy - 118 * f.sc && y < fy + 12) {
+      const dd = Math.abs(f.x - x);
+      if (dd < bestD) { foe = f; bestD = dd; }
+    }
+  }
+  if (foe) {
+    if (d.hinawaCool > 0) return;
+    d.hinawaCool = .75;
+    const m = hinawaMuzzle();
+    const fy = ly[foe.lane];
+    d.shots.push({ x0: m.x, y0: m.y, tx: foe.x, ty: fy - 55 * foe.sc, t: 0, dur: .14, dmg: 2, foe, big: true });
+    Snd.shot();
+    burst(m.x, m.y, 4, '255,220,140');
+    return;
+  }
+  for (const p of d.posts) {
+    if (Math.hypot(p.x - x, p.y - y) < 38) {
+      if (p.level === 0 && d.sparks >= POST_COST) {
+        d.sparks -= POST_COST; p.level = 1; p.pulse = .4;
+        Snd.reload(); pop(p.x, p.y - 50, 'ПОСТ!', '#8fe6ff', 20);
+      } else if (p.level === 1 && d.sparks >= UP_COST) {
+        d.sparks -= UP_COST; p.level = 2; p.pulse = .4;
+        Snd.charge(); pop(p.x, p.y - 50, 'УСИЛЕН!', '#8fe6ff', 20);
+      } else {
+        Snd.dry();
+        pop(p.x, p.y - 50, 'мало искр', '#ff9b7a', 16);
+      }
+      return;
+    }
+  }
 }
 
 function fireSuper() {
   if (G.mode !== 'play' || !G.ultReady || G.superShot) return;
-  G.ultReady = false; G.spirit = 0; G.ammo = MAG; G.reload = 0;
+  G.ultReady = false; G.spirit = 0;
   ultBtn.classList.remove('on');
-  const chain = G.targets
-    .filter(t => !t.dying && t.kind !== 'civil')
-    .sort((a, b) => a.x - b.x);
-  const m = muzzle();
-  G.superShot = { t: 0, i: -1, step: .12, chain, pts: [{ x: m.x, y: m.y }], x: m.x, y: m.y };
+  const m = hinawaMuzzle();
+  G.superShot = { t: 0, x: m.x, y: m.y, done: false };
   G.flash = .5; G.flashColor = '255,210,120';
-  G.shake = 12;
+  G.shake = 14;
   Snd.ult();
-  pop(playerX() + 140, VH - 310, 'СУПЕР ПУЛЯ!', '#ffd76a', 38);
+  pop(VW / 2, VH * .32, 'ОГНЕННАЯ ПУЛЯ!', '#ffd76a', 38);
 }
 
 function updateSuper(dt) {
   const s = G.superShot;
   s.t += dt;
-  const idx = Math.floor(s.t / s.step) - 1;
-  while (s.i < idx && s.i < s.chain.length - 1) {
-    s.i++;
-    const t = s.chain[s.i];
-    const g = targetGeom(t);
-    const px = t.x, py = g.y - 55 * g.s;
-    s.pts.push({ x: px, y: py });
-    s.x = px; s.y = py;
-    if (!t.dying) killTarget(t, 260);
-    G.hitStop = 0;
-    G.shake = Math.max(G.shake, 7);
+  if (!s.done && s.t > .22) {
+    s.done = true;
+    for (const f of G.def.foes) {
+      if (!f.dying) defDamage(f, f.kind === 'boss' ? 30 : 8);
+    }
+    G.shake = 16;
   }
-  if (s.t > (s.chain.length + 1) * s.step + .45) G.superShot = null;
+  if (s.t > .9) G.superShot = null;
 }
 
-function updateHinawa(dt) {
-  const ax = playerX();
-  const ly = laneY();
-  const prog = G.dist / GOAL;
+function updateDefense(dt) {
+  const d = G.def;
+  const ly = defLaneY();
+  const cx = CORE_X();
 
-  // прицел с клавиатуры
-  const sp = 460 * dt;
-  if (G.keys.left) G.aim.x -= sp;
-  if (G.keys.right) G.aim.x += sp;
-  if (G.keys.up) G.aim.y -= sp;
-  if (G.keys.down) G.aim.y += sp;
-  G.aim.x = clamp(G.aim.x, 20, VW - 20);
-  G.aim.y = clamp(G.aim.y, 20, VH - 20);
+  if (d.hinawaCool > 0) d.hinawaCool -= dt;
 
-  if (G.recoil > 0) G.recoil -= dt;
-
-  // перезарядка
-  if (G.reload > 0) {
-    G.reload -= dt;
-    if (G.reload <= 0) { G.ammo = MAG; G.reload = 0; Snd.reload(); }
-  }
-
-  // спавн целей
-  if (!G.finishing) {
-    G.spawnTimer -= dt;
-    if (G.spawnTimer <= 0) {
-      spawnTarget();
-      G.spawnTimer = lerp(1.3, .62, prog) * rnd(.82, 1.18);
+  // ---- волны ----
+  if (d.phase === 'prep') {
+    d.timer -= dt;
+    if (d.timer <= 0) {
+      const w = WAVES[d.wave];
+      d.phase = 'wave';
+      d.spawnLeft = w.n;
+      d.spawnT = 0;
+      d.bossIn = !!w.boss;
+      pop(VW / 2, VH * .3, w.boss ? 'БОСС ИДЁТ!' : 'ВОЛНА ' + (d.wave + 1), w.boss ? '#ff6a4a' : '#ffd23f', w.boss ? 38 : 30);
+      if (w.boss) Snd.boom();
     }
-  }
-  if (G.dist >= GOAL) G.finishing = true;
-  if (G.finishing && G.targets.length === 0 && G.bombs.length === 0) endLevel(true);
-
-  // цели
-  for (let i = G.targets.length - 1; i >= 0; i--) {
-    const t = G.targets[i];
-    const g = targetGeom(t);
-    t.gy = g.y; t.gs = g.s;
-    if (t.dying > 0) {
-      t.dying -= dt;
-      t.x -= G.speed * dt * .5;
-      if (t.dying <= 0) G.targets.splice(i, 1);
-      continue;
-    }
-    if (t.kind === 'roof') {
-      t.x -= G.speed * 0.32 * dt;        // крыши уезжают вместе с городом
-      t.ph += dt * 5;
-      t.throwT -= dt;
-      if (t.throwT <= 0 && t.x < VW - 40 && t.x > ax + 120) {
-        t.throwT = rnd(2.2, 4.2);
-        const T = 1.7;
-        const tx = ax + rnd(-30, 30), ty = ly[1] - 40;
-        G.bombs.push({
-          x: t.x, y: g.y - 60 * g.s,
-          vx: (tx - t.x) / T, vy: (ty - (g.y - 60 * g.s)) / T - .5 * 900 * T,
-          ty, kind: 'bomb', seed: rnd(0, 100), dead: 0
-        });
+  } else if (d.phase === 'wave') {
+    const w = WAVES[d.wave];
+    if (d.spawnLeft > 0) {
+      d.spawnT -= dt;
+      if (d.spawnT <= 0) {
+        defSpawn(pick(w.kinds));
+        d.spawnLeft--;
+        d.spawnT = w.gap * rnd(.85, 1.15);
       }
-    } else if (t.kind === 'civil') {
-      t.x -= G.speed * dt;
-      t.ph += dt * 6;
-      if (t.scared > 0) t.scared -= dt;
-    } else {
-      t.x -= (G.speed + t.walk) * dt;
-      t.ph += dt * 7;
-      if (Math.random() < .3) {
-        part(t.x + rnd(-10, 10), g.y - rnd(20, 70) * g.s, {
-          vx: rnd(-30, 10) - G.speed * .25, vy: rnd(-80, -30), life: rnd(.3, .7), max: .7,
-          size: rnd(2, 4), col: pick(['255,150,50', '255,200,90'])
-        });
-      }
-      // дошёл до броневика
-      if (t.x - ax < 78) {
-        hurt();
-        t.dying = .3;
-        burst(t.x, g.y - 50 * g.s, 12, '255,120,60');
-        continue;
-      }
-    }
-    if (t.x < -140) {
-      const missed = t.kind !== 'civil';
-      G.targets.splice(i, 1);
-      if (missed) {
-        G.combo = 0;
-        G.spirit = Math.max(0, G.spirit - 12);
-        if (G.spirit < 100) { G.ultReady = false; ultBtn.classList.remove('on'); }
-      }
+    } else if (d.foes.length === 0) {
+      if (d.wave >= WAVES.length - 1) { endLevel(true); return; }
+      d.wave++;
+      d.sparks += 25;
+      d.phase = 'prep';
+      d.timer = 5;
+      pop(VW / 2, VH * .36, 'ВОЛНА ОТБИТА! +25 искр', '#8fe6ff', 26);
     }
   }
 
-  // огненные бомбы
-  for (let i = G.bombs.length - 1; i >= 0; i--) {
-    const b = G.bombs[i];
-    if (b.dead) { b.dead -= dt; if (b.dead <= 0) G.bombs.splice(i, 1); continue; }
-    b.vy += 900 * dt;
-    b.x += b.vx * dt; b.y += b.vy * dt;
-    if (Math.random() < .7) {
-      part(b.x, b.y, {
-        vx: rnd(-20, 20), vy: rnd(-10, 30), life: rnd(.25, .5), max: .5,
-        size: rnd(2, 5), col: pick(['255,160,50', '255,90,40'])
+  // ---- посты стреляют ----
+  for (const p of d.posts) {
+    if (p.pulse > 0) p.pulse -= dt;
+    if (p.stun > 0) { p.stun -= dt; continue; }
+    if (p.level === 0) continue;
+    p.cool -= dt;
+    if (p.cool > 0) continue;
+    let best = null, bd = POST_R;
+    for (const f of d.foes) {
+      if (f.dying) continue;
+      const dd = Math.hypot(f.x - p.x, ly[f.lane] - 40 - p.y);
+      if (dd < bd) { bd = dd; best = f; }
+    }
+    if (best) {
+      p.cool = p.level === 2 ? .6 : .85;
+      d.shots.push({
+        x0: p.x, y0: p.y - 26, tx: best.x, ty: ly[best.lane] - 50 * best.sc,
+        t: 0, dur: .1, dmg: p.level === 2 ? 2 : 1, foe: best
       });
     }
-    if (b.y >= b.ty) {
-      burst(b.x, b.y, 18, '255,120,50');
-      Snd.boom();
-      G.shake = Math.max(G.shake, 9);
-      if (Math.abs(b.x - ax) < 95) hurt();
-      b.dead = .2;
-    } else if (b.x < -60) G.bombs.splice(i, 1);
   }
 
-  // пули
-  for (let i = G.bullets.length - 1; i >= 0; i--) {
-    const u = G.bullets[i];
-    u.t += dt;
-    if (u.t < u.dur) continue;
-    const h = u.hit;
-    if (!h) {
-      missShot(u.tx, u.ty);
-    } else if (h.kind === 'bomb') {                          // сбил бомбу в воздухе
-      if (!h.dead) {
-        h.dead = .2;
-        G.hits++;
-        G.score += 120;
-        burst(h.x, h.y, 16, '255,200,90');
-        pop(h.x, h.y - 30, 'СБИЛ! +120', '#ffd23f', 20);
-        Snd.kill();
-      }
-    } else if (h.kind === 'civil') {
-      G.hits++;                      // попал, но не туда
-      h.scared = 1.6;
-      G.combo = 0;
-      G.score = Math.max(0, G.score - 150);
-      G.spirit = Math.max(0, G.spirit - 25);
-      if (G.spirit < 100) { G.ultReady = false; ultBtn.classList.remove('on'); }
-      const g = targetGeom(h);
-      burst(h.x + 20, g.y, 10, '190,190,210');
-      pop(h.x, g.y - 90, 'ТАМ ЛЮДИ!', '#ff6a4a', 24);
-      Snd.hurt();
-    } else if (!h.dying) {
-      h.hp--;
-      G.hits++;
-      if (h.hp <= 0) killTarget(h);
-      else {
-        const g = targetGeom(h);
-        burst(h.x, g.y - 60 * g.s, 8, '255,240,180');
-        G.score += 40;
+  // ---- выстрелы ----
+  for (let i = d.shots.length - 1; i >= 0; i--) {
+    const s = d.shots[i];
+    s.t += dt;
+    if (s.t < s.dur) continue;
+    if (s.foe && !s.foe.dying) defDamage(s.foe, s.dmg);
+    d.shots.splice(i, 1);
+  }
+
+  // ---- огневики ----
+  for (let i = d.foes.length - 1; i >= 0; i--) {
+    const f = d.foes[i];
+    const fy = ly[f.lane];
+    f.gy = fy; f.gs = f.sc;
+    if (f.hit > 0) f.hit -= dt;
+    if (f.dying > 0) {
+      f.dying -= dt;
+      if (f.dying <= 0) d.foes.splice(i, 1);
+      continue;
+    }
+    f.x -= f.sp * dt;
+    f.ph += dt * (f.kind === 'fast' ? 11 : 6);
+    if (Math.random() < .3) {
+      part(f.x + rnd(-10, 10), fy - rnd(20, 70) * f.sc, {
+        vx: rnd(-20, 20), vy: rnd(-80, -30), life: rnd(.3, .7), max: .7,
+        size: rnd(2, 4), col: pick(['255,150,50', '255,200,90'])
+      });
+    }
+    // босс гасит ближайший пост
+    if (f.kind === 'boss') {
+      f.blast = (f.blast || 3) - dt;
+      if (f.blast <= 0) {
+        f.blast = 5;
+        let near = null, nd = 260;
+        for (const p of d.posts) {
+          if (p.level === 0 || p.stun > 0) continue;
+          const dd = Math.hypot(p.x - f.x, p.y - fy);
+          if (dd < nd) { nd = dd; near = p; }
+        }
+        if (near) {
+          near.stun = 4;
+          burst(near.x, near.y - 20, 18, '255,90,40');
+          pop(near.x, near.y - 50, 'ПОСТ ГОРИТ!', '#ff6a4a', 18);
+          Snd.boom();
+        }
       }
     }
-    G.bullets.splice(i, 1);
+    // дошёл до ядра
+    if (f.x < cx + 46) {
+      const dmg = f.kind === 'boss' ? 3 : 1;
+      d.shield = Math.max(0, d.shield - dmg);
+      f.dying = .3;
+      G.shake = 14; G.flash = .5; G.flashColor = '255,60,40';
+      Snd.hurt();
+      burst(cx + 50, fy - 40, 16, '255,90,50');
+      pop(cx + 70, fy - 110, '-' + dmg + ' щит', '#ff6a4a', 24);
+      if (d.shield <= 0) { endLevel(false); return; }
+    }
   }
+}
+
+function hinawaMuzzle() {
+  const ly = defLaneY();
+  return { x: CORE_X() + 74, y: ly[1] - 96 };
 }
 
 // ============================================================
@@ -1078,9 +1051,7 @@ addEventListener('keydown', e => {
   if (G.mode === 'menu' && (k === 'enter' || k === ' ')) { startGame(1); return; }
   if (G.mode === 'over' && (k === 'enter' || k === ' ')) { startGame(G.level); return; }
   if (G.level === 2) {
-    if (k === ' ') shoot();
-    else if (k === 'e' || k === 'у') fireSuper();
-    else if ((k === 'r' || k === 'к') && G.ammo < MAG && G.reload <= 0) { G.reload = 1.15; Snd.dry(); }
+    if (k === 'e' || k === 'у' || k === ' ') fireSuper();
     return;
   }
   if (k === 'arrowup' || k === 'w' || k === 'ц') changeLane(-1);
@@ -1097,30 +1068,32 @@ addEventListener('keyup', e => {
   if (k === 'arrowright' || k === 'd' || k === 'в') G.keys.right = 0;
 });
 
-// Мышь: уровень 1 — удар, уровень 2 — прицел и выстрел
+// Мышь: уровень 1 — удар, уровень 2 — тап по полю
 cv.addEventListener('mousemove', e => {
-  if (G.level !== 2) return;
+  if (G.level !== 2 || !G.def) return;
   const p = toLogical(e.clientX, e.clientY);
-  G.aim.x = p.x; G.aim.y = p.y;
+  G.def.hover = -1;
+  for (let i = 0; i < G.def.posts.length; i++) {
+    const s = G.def.posts[i];
+    if (Math.hypot(s.x - p.x, s.y - p.y) < 38) { G.def.hover = i; break; }
+  }
 });
 cv.addEventListener('mousedown', e => {
   Snd.on();
   if (G.level === 2) {
     const p = toLogical(e.clientX, e.clientY);
-    G.aim.x = p.x; G.aim.y = p.y;
-    shoot();
+    defTap(p.x, p.y);
   } else slash();
 });
 
-// Тач: уровень 1 — свайп/тап, уровень 2 — тап по цели стреляет
+// Тач: уровень 1 — свайп/тап, уровень 2 — тап по огневику или площадке
 let touchStart = null;
 cv.addEventListener('touchstart', e => {
   Snd.on();
   const t = e.changedTouches[0];
   if (G.level === 2) {
     const p = toLogical(t.clientX, t.clientY);
-    G.aim.x = p.x; G.aim.y = p.y;
-    shoot();
+    defTap(p.x, p.y);
     e.preventDefault();
     return;
   }
@@ -1129,12 +1102,7 @@ cv.addEventListener('touchstart', e => {
 }, { passive: false });
 cv.addEventListener('touchmove', e => {
   const t = e.changedTouches[0];
-  if (G.level === 2) {
-    const p = toLogical(t.clientX, t.clientY);
-    G.aim.x = p.x; G.aim.y = p.y;
-    e.preventDefault();
-    return;
-  }
+  if (G.level === 2) { e.preventDefault(); return; }
   if (!touchStart || touchStart.moved) return;
   const dy = t.clientY - touchStart.y, dx = t.clientX - touchStart.x;
   if (Math.abs(dy) > 26 && Math.abs(dy) > Math.abs(dx)) {
@@ -1249,6 +1217,16 @@ function update(dt) {
   // супер пуля летит в замершем мире
   if (G.superShot) { updateSuper(dt); updateFx(dt); return; }
 
+  // ---- Уровень 2: оборона, тут ничего не едет ----
+  if (G.level === 2) {
+    if (G.invuln > 0) G.invuln -= dt;
+    if (G.shake > 0) G.shake = Math.max(0, G.shake - 40 * dt);
+    if (G.flash > 0) G.flash = Math.max(0, G.flash - 2.6 * dt);
+    updateDefense(dt);
+    updateFx(dt);
+    return;
+  }
+
   const ax = playerX();
   const ly = laneY();
 
@@ -1293,9 +1271,6 @@ function update(dt) {
       size: rnd(2, 5), col: pick(['255,190,80', '255,120,50'])
     });
   }
-
-  // ---- Уровень 2 живёт по своим правилам ----
-  if (G.level === 2) { updateHinawa(dt); updateFx(dt); return; }
 
   // ---- Спавн ----
   if (!G.finishing) {
@@ -1421,17 +1396,25 @@ function endLevel(won) {
   ultBtn.classList.remove('on');
   const acc = G.spawned ? G.kills / G.spawned : 0;
   const lvl2 = G.level === 2;
+  const shield = lvl2 && G.def ? G.def.shield : 0;
   let rank = 'C', verdict = 'Стажёр. Ещё разок!';
-  if (won && G.hearts === MAX_HEARTS && acc >= .9) {
-    rank = 'S'; verdict = lvl2 ? 'Ни одного промаха. Снайпер!' : 'Рыцарь короля! Идеально.';
+  if (lvl2) {
+    // на обороне всё решает, сколько щита осталось у ядра
+    if (won && shield >= 5) { rank = 'S'; verdict = 'Ядро без единой царапины!'; }
+    else if (won && shield === 4) { rank = 'A'; verdict = 'Отлично держал оборону, лейтенант!'; }
+    else if (won && shield >= 2) { rank = 'B'; verdict = 'Отбились, но было горячо.'; }
+    else if (won) { rank = 'C'; verdict = 'Еле удержали ядро. Зато босс упокоен!'; }
+    else { rank = 'C'; verdict = 'Аматэрасу погасла. Пробуем снова!'; }
+  } else if (won && G.hearts === MAX_HEARTS && acc >= .9) {
+    rank = 'S'; verdict = 'Рыцарь короля! Идеально.';
   } else if (won && acc >= .78 && G.hearts >= MAX_HEARTS - 1) {
-    rank = 'A'; verdict = lvl2 ? 'Чисто отработал, лейтенант!' : 'Отличная работа, сэр Артур!';
+    rank = 'A'; verdict = 'Отличная работа, сэр Артур!';
   } else if (won && acc >= .55) {
     rank = 'B'; verdict = 'Неплохо, но огневики проскочили.';
   } else if (won) {
     rank = 'C'; verdict = 'Доехал — и на том спасибо.';
   } else {
-    rank = 'C'; verdict = lvl2 ? 'Броневик не дотянул. Ещё раз!' : 'Коробок сгорел. Пробуем снова!';
+    rank = 'C'; verdict = 'Коробок сгорел. Пробуем снова!';
   }
 
   document.getElementById('resTitle').textContent = won ? 'ВЫЗОВ ЗАКРЫТ' : 'ВЫЗОВ ПРОВАЛЕН';
@@ -1440,9 +1423,8 @@ function endLevel(won) {
   document.getElementById('verdict').textContent = verdict;
   document.getElementById('stKills').textContent = G.kills + '/' + G.spawned;
   if (lvl2) {
-    document.getElementById('stCombo').textContent =
-      (G.shots ? Math.round(G.hits / G.shots * 100) : 0) + '%';
-    document.getElementById('stComboK').textContent = 'меткость';
+    document.getElementById('stCombo').textContent = shield + '/5';
+    document.getElementById('stComboK').textContent = 'щит ядра';
   } else {
     document.getElementById('stCombo').textContent = 'x' + G.maxCombo;
     document.getElementById('stComboK').textContent = 'комбо';
@@ -2046,180 +2028,268 @@ function drawArthur() {
   }
 }
 
+
 // ============================================================
-//  Отрисовка уровня 2
+//  Отрисовка уровня 2 — оборона Аматэрасу
 // ============================================================
 
-// Стрелок на крыше броневика: руки с пистолетом разворачиваются за прицелом
-function drawHinawaRig() {
-  const ly = laneY();
-  const y = lerp(ly[0], ly[2], G.laneF / 2);
-  const s = lerp(LANE_SCALE[0], LANE_SCALE[2], G.laneF / 2);
-  const x = playerX();
-  const blink = G.invuln > 0 && Math.floor(G.t * 22) % 2 === 0;
-  const hs = s * 1.3;
-  const bob = Math.sin(G.bob * 9) * 2.5;
-  const sh = riderShoulder();
-  const aimA = Math.atan2(G.aim.y - sh.y, G.aim.x - sh.x);
-  const kick = G.recoil > 0 ? clamp(G.recoil / .14, 0, 1) : 0;
+// Плазменное ядро: светящийся шар в кожухе
+function drawCore() {
+  const d = G.def;
+  const cx = CORE_X(), ly = defLaneY();
+  const cy = ly[1] - 50;
+  const t = G.t;
+  const hurtK = clamp(G.flash, 0, 1);
 
+  // опора
+  ctx.fillStyle = '#241a33';
+  roundRect(cx - 54, cy - 6, 108, VH - cy + 6, 10); ctx.fill();
+  ctx.fillStyle = '#17101f';
+  ctx.fillRect(cx - 44, cy + 20, 88, VH - cy - 20);
+
+  // кожух
+  ctx.strokeStyle = '#4c5160'; ctx.lineWidth = 9;
+  ctx.beginPath(); ctx.arc(cx, cy, 62, Math.PI * .72, Math.PI * 1.28); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, 62, -Math.PI * .28, Math.PI * .28); ctx.stroke();
+  ctx.fillStyle = '#5d6373';
+  roundRect(cx - 70, cy - 10, 18, 20, 4); ctx.fill();
+  roundRect(cx + 52, cy - 10, 18, 20, 4); ctx.fill();
+
+  // шар
+  glow(cx, cy, 130, hurtK > .2 ? '255,110,70' : '120,210,255', .55 + Math.sin(t * 3) * .1);
+  const g = ctx.createRadialGradient(cx - 8, cy - 8, 4, cx, cy, 46);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(.35, '#d8f6ff');
+  g.addColorStop(.7, '#59c8ff');
+  g.addColorStop(1, '#1d6fb8');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(cx, cy, 42 + Math.sin(t * 4) * 2, 0, 7); ctx.fill();
+
+  // кольца
   ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(hs, hs);
-  if (blink) ctx.globalAlpha = .45;
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.strokeStyle = 'rgba(200,245,255,.75)'; ctx.lineWidth = 3;
+  for (let i = 0; i < 3; i++) {
+    const a = t * (1.1 + i * .5) + i * 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 50 + i * 9, a, a + 1.5);
+    ctx.stroke();
+  }
+  ctx.restore();
 
-  glow(-86, -20, 66, '255,150,50', .5);
-  drawTruckBody(bob);
+  // табличка
+  ctx.fillStyle = '#fff2d0';
+  ctx.font = '900 12px ' + FONT;
+  ctx.textAlign = 'center';
+  ctx.fillText('АМАТЭРАСУ', cx, cy + 96);
 
-  // ==== стрелок ====
+  // щит
+  const sw = 20, gap = 5, total = d.maxShield * (sw + gap) - gap;
+  for (let i = 0; i < d.maxShield; i++) {
+    const bx = cx - total / 2 + i * (sw + gap), by = cy - 92;
+    const live = i < d.shield;
+    ctx.fillStyle = live ? '#7fd4ff' : 'rgba(255,255,255,.13)';
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx + sw, by);
+    ctx.lineTo(bx + sw, by + 12);
+    ctx.lineTo(bx + sw / 2, by + 20);
+    ctx.lineTo(bx, by + 12);
+    ctx.closePath(); ctx.fill();
+  }
+}
+
+// Дорожки, по которым идут огневики
+function drawDefLanes() {
+  const ly = defLaneY(), cx = CORE_X();
+  for (let i = 0; i < 3; i++) {
+    const y = ly[i];
+    const g = ctx.createLinearGradient(cx, y - 40, VW, y - 40);
+    g.addColorStop(0, 'rgba(255,120,50,.16)');
+    g.addColorStop(1, 'rgba(255,120,50,.04)');
+    ctx.fillStyle = g;
+    ctx.fillRect(cx, y - 44, VW - cx, 48);
+    ctx.strokeStyle = 'rgba(255,190,130,.18)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx, y + 4); ctx.lineTo(VW, y + 4); ctx.stroke();
+    // стрелки «сюда идут»
+    ctx.fillStyle = 'rgba(255,190,130,.14)';
+    const off = (G.t * 60) % 70;
+    for (let x = VW - off; x > cx + 20; x -= 70) {
+      ctx.beginPath();
+      ctx.moveTo(x, y - 26); ctx.lineTo(x - 14, y - 18); ctx.lineTo(x, y - 10);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+}
+
+// Огневые посты и площадки под них
+function drawPosts() {
+  const d = G.def;
+  for (let i = 0; i < d.posts.length; i++) {
+    const p = d.posts[i];
+    const canBuild = p.level === 0 && d.sparks >= POST_COST;
+    const canUp = p.level === 1 && d.sparks >= UP_COST;
+
+    // радиус обстрела — когда наводишь или только что поставил
+    if ((d.hover === i && p.level > 0) || p.pulse > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'rgba(140,220,255,.22)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(p.x, p.y - 26, POST_R, 0, 7); ctx.stroke();
+      ctx.restore();
+    }
+
+    // площадка
+    ctx.save();
+    if (p.level === 0) {
+      ctx.setLineDash([7, 6]);
+      ctx.strokeStyle = canBuild ? 'rgba(130,255,150,.8)' : 'rgba(255,255,255,.22)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 26, 0, 7); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = canBuild ? 'rgba(130,255,150,.9)' : 'rgba(255,255,255,.4)';
+      ctx.font = '900 13px ' + FONT;
+      ctx.textAlign = 'center';
+      ctx.fillText(POST_COST, p.x, p.y + 5);
+    } else {
+      const stunned = p.stun > 0;
+      const two = p.level === 2;
+      ctx.fillStyle = 'rgba(0,0,0,.35)';
+      ctx.beginPath(); ctx.ellipse(p.x, p.y + 6, 26, 8, 0, 0, 7); ctx.fill();
+      // тумба
+      ctx.fillStyle = stunned ? '#4a3a3a' : '#59616f';
+      roundRect(p.x - 14, p.y - 18, 28, 24, 5); ctx.fill();
+      ctx.fillStyle = stunned ? '#6b4a44' : '#ffd23f';
+      ctx.fillRect(p.x - 14, p.y - 8, 28, 3);
+      // башенка с куполом
+      ctx.fillStyle = stunned ? '#5a4a4a' : '#7a8392';
+      roundRect(p.x - 12, p.y - 30, 24, 14, 5); ctx.fill();
+      ctx.fillStyle = two ? '#ffb347' : '#7fd4ff';
+      ctx.beginPath(); ctx.arc(p.x, p.y - 30, two ? 11 : 9, Math.PI, 0); ctx.fill();
+      // ствол(ы) смотрят вправо, откуда идут огневики
+      ctx.fillStyle = stunned ? '#6b5450' : '#99a2b2';
+      if (two) {
+        roundRect(p.x + 8, p.y - 34, 24, 7, 3); ctx.fill();
+        roundRect(p.x + 8, p.y - 25, 24, 7, 3); ctx.fill();
+      } else {
+        roundRect(p.x + 8, p.y - 31, 24, 8, 3); ctx.fill();
+      }
+      if (!stunned) glow(p.x + 16, p.y - 29, two ? 40 : 30, two ? '255,170,70' : '120,210,255', .45);
+      if (stunned) {
+        for (let k = 0; k < 2; k++) {
+          part(p.x + rnd(-10, 10), p.y - 30, {
+            vx: rnd(-10, 10), vy: rnd(-40, -15), life: .6, max: .6,
+            size: rnd(5, 10), col: '90,80,90', kind: 'smoke'
+          });
+        }
+        ctx.fillStyle = '#ff9b7a';
+        ctx.font = '900 11px ' + FONT; ctx.textAlign = 'center';
+        ctx.fillText('ГОРИТ', p.x, p.y - 46);
+      }
+      if (canUp) {
+        ctx.fillStyle = '#8fe6ff';
+        ctx.font = '900 11px ' + FONT; ctx.textAlign = 'center';
+        ctx.fillText('↑ ' + UP_COST, p.x, p.y - 42);
+      }
+    }
+    ctx.restore();
+  }
+}
+
+// Хинава у ядра
+function drawHinawaStand() {
+  const ly = defLaneY();
+  const x = CORE_X() + 56, y = ly[1] + 4;
+  const d = G.def;
+  const kick = d.hinawaCool > .6 ? (d.hinawaCool - .6) / .15 : 0;
   ctx.save();
-  ctx.translate(-30 - kick * 2, -56 + bob);
+  ctx.translate(x - kick * 2, y);
+  ctx.scale(1.15, 1.15);
 
-  // ноги в стойке
+  ctx.fillStyle = 'rgba(0,0,0,.35)';
+  ctx.beginPath(); ctx.ellipse(0, 2, 24, 7, 0, 0, 7); ctx.fill();
+
   ctx.fillStyle = '#1d2440';
-  ctx.fillRect(-16, -18, 11, 20);
-  ctx.fillRect(5, -18, 11, 20);
+  ctx.fillRect(-14, -18, 10, 19);
+  ctx.fillRect(4, -18, 10, 19);
   ctx.fillStyle = '#141827';
-  ctx.fillRect(-18, -2, 15, 6);
-  ctx.fillRect(3, -2, 15, 6);
+  ctx.fillRect(-16, -2, 14, 6);
+  ctx.fillRect(2, -2, 14, 6);
 
-  // китель бригады
-  const cg = ctx.createLinearGradient(0, -52, 0, -14);
+  const cg = ctx.createLinearGradient(0, -50, 0, -14);
   cg.addColorStop(0, '#2f3856'); cg.addColorStop(1, '#1a2032');
   ctx.fillStyle = cg;
-  roundRect(-16, -52, 32, 38, 6); ctx.fill();
+  roundRect(-15, -50, 30, 36, 6); ctx.fill();
   ctx.fillStyle = '#ffd23f';
-  ctx.fillRect(-16, -30, 32, 4);
-  ctx.fillRect(-16, -23, 32, 2.5);
-  ctx.fillStyle = '#e0533a';          // погоны лейтенанта
-  ctx.fillRect(-16, -51, 9, 4);
-  ctx.fillRect(7, -51, 9, 4);
+  ctx.fillRect(-15, -30, 30, 4);
+  ctx.fillStyle = '#e0533a';
+  ctx.fillRect(-15, -49, 9, 4);
+  ctx.fillRect(6, -49, 9, 4);
 
-  // голова, тёмные волосы, прищур
   ctx.fillStyle = '#f0c49a';
-  ctx.beginPath(); ctx.arc(1, -62, 12, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(1, -60, 11.5, 0, 7); ctx.fill();
   ctx.fillStyle = '#2b2430';
   ctx.beginPath();
-  ctx.moveTo(-11, -63);
-  ctx.quadraticCurveTo(-13, -78, 2, -76);
-  ctx.quadraticCurveTo(14, -77, 12, -63);
-  ctx.quadraticCurveTo(5, -70, -11, -63);
+  ctx.moveTo(-10, -61);
+  ctx.quadraticCurveTo(-12, -75, 2, -73);
+  ctx.quadraticCurveTo(13, -74, 11, -61);
+  ctx.quadraticCurveTo(5, -68, -10, -61);
   ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#20364f';
-  ctx.beginPath(); ctx.ellipse(8, -61, 2.4, 1.7, 0, 0, 7); ctx.fill();
-  ctx.strokeStyle = '#1d1a22'; ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(4, -66); ctx.lineTo(12, -65); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(7, -59, 2.3, 1.7, 0, 0, 7); ctx.fill();
 
-  // руки с пистолетом
+  // рука с пистолетом смотрит вправо, туда же, откуда идут огневики
   ctx.save();
-  ctx.translate(10, -40);
-  ctx.rotate(aimA);
+  ctx.translate(9, -38);
+  ctx.rotate(-.12 + kick * .25);
   ctx.fillStyle = '#f0c49a';
-  ctx.fillRect(-4, -4.5, 26, 9);
+  ctx.fillRect(-4, -4.5, 24, 9);
   ctx.fillStyle = '#2b2f38';
-  roundRect(20, -6, 20, 12, 2); ctx.fill();
-  ctx.fillRect(23, 5, 7, 9);
+  roundRect(18, -6, 19, 11, 2); ctx.fill();
+  ctx.fillRect(21, 4, 7, 9);
   ctx.fillStyle = '#545b68';
-  ctx.fillRect(38, -4, 10, 6);
+  ctx.fillRect(35, -4, 10, 6);
   if (kick > 0) {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = kick;
     ctx.fillStyle = '#ffe9a8';
     ctx.beginPath();
-    ctx.moveTo(48, -1); ctx.lineTo(64 + kick * 12, -10);
-    ctx.lineTo(57, -1); ctx.lineTo(64 + kick * 12, 8);
+    ctx.moveTo(45, -1); ctx.lineTo(60 + kick * 10, -9);
+    ctx.lineTo(54, -1); ctx.lineTo(60 + kick * 10, 7);
     ctx.closePath(); ctx.fill();
     ctx.restore();
   }
   ctx.restore();
-
-  ctx.restore();
   ctx.restore();
 
-  if (kick > 0) {
-    const m = muzzle();
-    glow(m.x, m.y, 64 * hs, '255,200,120', kick * .6);
-  }
-}
-
-// Житель, которого эвакуируют. Синяя метка — свой, стрелять нельзя.
-function drawCivil(c) {
-  const g = targetGeom(c), s = g.s;
-  const panic = c.scared > 0;
-  const wave = Math.sin(c.ph * (panic ? 3.2 : 1.6));
-  ctx.save();
-  ctx.translate(c.x, g.y);
-  ctx.scale(s, s);
-  ctx.fillStyle = 'rgba(0,0,0,.3)';
-  ctx.beginPath(); ctx.ellipse(0, 2, 20, 6, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = '#3c4a6b';
-  ctx.fillRect(-10, -34, 8, 34);
-  ctx.fillRect(3, -34, 8, 34);
-  ctx.fillStyle = '#7fd4ff';
-  roundRect(-14, -70, 28, 38, 6); ctx.fill();
-  ctx.fillStyle = '#eafcff';
-  ctx.fillRect(-14, -52, 28, 4);
-  ctx.fillStyle = '#ffd9b8';
-  ctx.beginPath(); ctx.arc(0, -80, 11, 0, 7); ctx.fill();
-  ctx.fillStyle = '#4a3f55';
-  ctx.beginPath(); ctx.arc(0, -82, 11, Math.PI, 0); ctx.fill();
-  ctx.save();                            // машет рукой
-  ctx.translate(12, -66);
-  ctx.rotate(-1.2 + wave * .5);
-  ctx.fillStyle = '#7fd4ff';
-  roundRect(0, -4, 24, 8, 4); ctx.fill();
-  ctx.restore();
-  ctx.restore();
-
-  // метка «свой»
-  const my = g.y - 104 * s, r = 11 * s;
-  ctx.save();
-  ctx.globalAlpha = panic ? .6 + Math.sin(G.t * 20) * .4 : .92;
-  ctx.fillStyle = panic ? '#ff6a4a' : '#3aa0d8';
-  ctx.beginPath(); ctx.arc(c.x, my, r, 0, 7); ctx.fill();
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(c.x - r * .55, my - r * .18, r * 1.1, r * .36);
-  ctx.fillRect(c.x - r * .18, my - r * .55, r * .36, r * 1.1);
-  ctx.restore();
-}
-
-// Карниз под огневиком на крыше — чтобы он не висел в воздухе
-function drawRoofLedge(t) {
-  const g = targetGeom(t);
-  ctx.fillStyle = '#170e26';
-  ctx.fillRect(t.x - 48 * g.s, g.y, 96 * g.s, 20 * g.s);
-  ctx.fillStyle = 'rgba(255,140,60,.28)';
-  ctx.fillRect(t.x - 48 * g.s, g.y - 3, 96 * g.s, 3);
-}
-
-function drawBombs() {
-  for (const b of G.bombs) {
-    if (b.dead) continue;
-    glow(b.x, b.y, 46, '255,120,40', .6);
-    drawFlame(b.x, b.y + 14, 26, 44, G.t * 8 + b.seed, .95);
+  // подсказка — только пока на поле есть кого бить
+  if (d.hinawaCool <= 0 && d.foes.some(f => !f.dying)) {
     ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = 'rgba(255,235,190,.95)';
-    ctx.beginPath(); ctx.arc(b.x, b.y, 9, 0, 7); ctx.fill();
+    ctx.globalAlpha = .5 + Math.sin(G.t * 5) * .2;
+    ctx.fillStyle = '#8fe6ff';
+    ctx.font = '900 10px ' + FONT; ctx.textAlign = 'center';
+    ctx.fillText('ТАП ПО ОГНЕВИКУ', x + 64, y - 104);
     ctx.restore();
   }
 }
 
-function drawBullets() {
+function drawDefShots() {
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  for (const u of G.bullets) {
-    const k = clamp(u.t / u.dur, 0, 1);
-    const hx = lerp(u.x0, u.tx, k), hy = lerp(u.y0, u.ty, k);
-    const tk = Math.max(0, k - .5);
-    const bx = lerp(u.x0, u.tx, tk), by = lerp(u.y0, u.ty, tk);
+  for (const s of G.def.shots) {
+    const k = clamp(s.t / s.dur, 0, 1);
+    const hx = lerp(s.x0, s.tx, k), hy = lerp(s.y0, s.ty, k);
+    const tk = Math.max(0, k - .55);
+    const bx = lerp(s.x0, s.tx, tk), by = lerp(s.y0, s.ty, tk);
     const g = ctx.createLinearGradient(bx, by, hx, hy);
     g.addColorStop(0, 'rgba(255,120,40,0)');
-    g.addColorStop(1, 'rgba(255,245,210,.95)');
-    ctx.strokeStyle = g; ctx.lineWidth = 3;
+    g.addColorStop(1, s.big ? 'rgba(255,245,210,.95)' : 'rgba(180,235,255,.9)');
+    ctx.strokeStyle = g; ctx.lineWidth = s.big ? 3.5 : 2.5;
     ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(hx, hy); ctx.stroke();
-    glow(hx, hy, 20, '255,210,130', .8);
+    glow(hx, hy, s.big ? 20 : 14, s.big ? '255,210,130' : '150,220,255', .7);
   }
   ctx.restore();
 }
@@ -2227,51 +2297,19 @@ function drawBullets() {
 function drawSuperShot() {
   const s = G.superShot;
   if (!s) return;
+  const k = clamp(s.t / .9, 0, 1);
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  ctx.lineJoin = 'round';
-  ctx.strokeStyle = 'rgba(255,190,90,.85)'; ctx.lineWidth = 8;
-  ctx.beginPath();
-  s.pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
-  ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 2.5;
-  ctx.stroke();
-  const last = s.pts[s.pts.length - 1];
-  glow(last.x, last.y, 80, '255,215,140', .85);
+  const w = 60 + k * VW * 1.4;
+  const g = ctx.createLinearGradient(s.x, 0, s.x + w, 0);
+  g.addColorStop(0, 'rgba(255,255,255,.9)');
+  g.addColorStop(.5, 'rgba(255,190,90,.55)');
+  g.addColorStop(1, 'rgba(255,120,40,0)');
+  ctx.fillStyle = g;
+  ctx.globalAlpha = 1 - k * .7;
+  ctx.fillRect(s.x, 0, w, VH);
   ctx.restore();
-  drawSpeedLines(.45);
-}
-
-function drawCrosshair() {
-  if (G.mode !== 'play') return;
-  const a = G.aim;
-  const over = pickTarget(a.x, a.y);
-  const friendly = over && over.kind === 'civil';
-  const col = friendly ? '#8fe6ff' : over ? '#8dff8d' : '#ff9b7a';
-  const r = 18 + (G.recoil > 0 ? 7 : 0);
-  ctx.save();
-  ctx.lineWidth = 2.5;
-  ctx.strokeStyle = col;
-  ctx.beginPath(); ctx.arc(a.x, a.y, r, 0, 7); ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(a.x - r - 10, a.y); ctx.lineTo(a.x - r + 4, a.y);
-  ctx.moveTo(a.x + r - 4, a.y); ctx.lineTo(a.x + r + 10, a.y);
-  ctx.moveTo(a.x, a.y - r - 10); ctx.lineTo(a.x, a.y - r + 4);
-  ctx.moveTo(a.x, a.y + r - 4); ctx.lineTo(a.x, a.y + r + 10);
-  ctx.stroke();
-  ctx.fillStyle = col;
-  ctx.beginPath(); ctx.arc(a.x, a.y, 2.2, 0, 7); ctx.fill();
-  ctx.textAlign = 'center';
-  if (friendly) {
-    ctx.font = '900 13px ' + FONT;
-    ctx.fillText('СВОЙ!', a.x, a.y - r - 12);
-  }
-  if (G.reload > 0) {
-    ctx.font = '900 11px ' + FONT;
-    ctx.fillStyle = '#ffd23f';
-    ctx.fillText('ПЕРЕЗАРЯДКА', a.x, a.y + r + 20);
-  }
-  ctx.restore();
+  drawSpeedLines(.5);
 }
 
 function roundRect(x, y, w, h, r) {
@@ -2348,8 +2386,8 @@ function drawHUD() {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
 
-  // сердца-пламя
-  for (let i = 0; i < MAX_HEARTS; i++) {
+  // сердца-пламя (на обороне вместо них щит самого ядра)
+  for (let i = 0; G.level !== 2 && i < MAX_HEARTS; i++) {
     const x = pad + 16 + i * 34, y = pad + 26;
     if (i < G.hearts) {
       glow(x, y - 6, 22, '255,120,50', .55);
@@ -2379,18 +2417,41 @@ function drawHUD() {
     ctx.restore();
   }
 
-  // прогресс вызова
-  const bw = Math.min(320, VW * .34), bx = (VW - bw) / 2, by = pad + 10;
-  ctx.fillStyle = 'rgba(0,0,0,.35)';
-  roundRect(bx, by, bw, 10, 5); ctx.fill();
-  const pr = clamp(G.dist / GOAL, 0, 1);
-  const pg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
-  pg.addColorStop(0, '#ff8a2b'); pg.addColorStop(1, '#ffd23f');
-  ctx.fillStyle = pg;
-  roundRect(bx, by, Math.max(6, bw * pr), 10, 5); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.55)';
-  ctx.font = '900 10px ' + FONT; ctx.textAlign = 'center';
-  ctx.fillText('ВЫЗОВ', VW / 2, by - 4);
+  if (G.level === 2 && G.def) {
+    // волна и искры
+    const d = G.def;
+    const last = d.wave >= WAVES.length - 1;
+    ctx.textAlign = 'center';
+    ctx.font = '900 20px ' + FONT;
+    ctx.fillStyle = last ? '#ff8a6a' : '#fff2d0';
+    ctx.fillText(last ? 'БОСС' : 'ВОЛНА ' + (d.wave + 1) + ' / ' + (WAVES.length - 1), VW / 2, pad + 24);
+    if (d.phase === 'prep') {
+      ctx.font = '900 13px ' + FONT;
+      ctx.fillStyle = '#8fe6ff';
+      ctx.fillText('готовься — ' + Math.ceil(d.timer) + '...', VW / 2, pad + 44);
+    }
+    // искры слева сверху
+    ctx.textAlign = 'left';
+    ctx.font = '900 22px ' + FONT;
+    ctx.fillStyle = '#ffd23f';
+    ctx.fillText('✦ ' + d.sparks, pad, pad + 26);
+    ctx.font = '900 10px ' + FONT;
+    ctx.fillStyle = 'rgba(255,240,210,.65)';
+    ctx.fillText('ИСКРЫ НА ПОСТЫ', pad, pad + 42);
+  } else {
+    // прогресс вызова
+    const bw = Math.min(320, VW * .34), bx = (VW - bw) / 2, by = pad + 10;
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    roundRect(bx, by, bw, 10, 5); ctx.fill();
+    const pr = clamp(G.dist / GOAL, 0, 1);
+    const pg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+    pg.addColorStop(0, '#ff8a2b'); pg.addColorStop(1, '#ffd23f');
+    ctx.fillStyle = pg;
+    roundRect(bx, by, Math.max(6, bw * pr), 10, 5); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.font = '900 10px ' + FONT; ctx.textAlign = 'center';
+    ctx.fillText('ВЫЗОВ', VW / 2, by - 4);
+  }
 
   // шкала Рыцарского духа
   const sw = Math.min(280, VW * .3), sx = pad, sy = VH - 28;
@@ -2415,30 +2476,6 @@ function drawHUD() {
     ctx.fillText(nm + (isTouch ? ' — ЖМИ КНОПКУ' : ' — ЖМИ E'), sx + sw / 2, sy + 11);
   }
 
-  // патроны Хинавы — над шкалой
-  if (G.level === 2) {
-    const by = sy - 48;
-    for (let i = 0; i < MAG; i++) {
-      const bx = sx + i * 15;
-      const live = i < G.ammo;
-      ctx.fillStyle = live ? '#ffd23f' : 'rgba(255,255,255,.16)';
-      roundRect(bx, by, 9, 15, 2); ctx.fill();
-      ctx.fillStyle = live ? '#ff8a2b' : 'rgba(255,255,255,.1)';
-      ctx.beginPath();
-      ctx.moveTo(bx, by + 2); ctx.lineTo(bx + 4.5, by - 4); ctx.lineTo(bx + 9, by + 2);
-      ctx.closePath(); ctx.fill();
-    }
-    if (G.reload > 0) {
-      const w = MAG * 15 - 6;
-      ctx.fillStyle = 'rgba(0,0,0,.5)';
-      roundRect(sx, by + 2, w, 11, 5); ctx.fill();
-      ctx.fillStyle = '#ffd23f';
-      roundRect(sx, by + 2, w * (1 - G.reload / 1.15), 11, 5); ctx.fill();
-      ctx.fillStyle = '#1a1020';
-      ctx.font = '900 9px ' + FONT; ctx.textAlign = 'center';
-      ctx.fillText('ПЕРЕЗАРЯДКА', sx + w / 2, by + 11);
-    }
-  }
   ctx.restore();
 }
 
@@ -2511,21 +2548,16 @@ function render() {
 
   drawCityLayer(cityMid, 0.32, 0, '#1d1030', 'rgba(255,210,140,.5)', true);
 
-  // огневики на крышах — поверх города, до дороги
-  if (G.level === 2) {
-    for (const t of G.targets) if (t.kind === 'roof') { drawRoofLedge(t); drawInfernal(t); }
-  }
-
-  drawRoad();
-
-  if (G.level === 2) {
-    for (const t of G.targets) if (t.kind === 'civil') drawCivil(t);
-    const road = G.targets.filter(t => t.kind === 'road').sort((a, b) => a.lane - b.lane);
-    for (const t of road) if (t.lane < 1) drawInfernal(t);
-    drawHinawaRig();
-    for (const t of road) if (t.lane >= 1) drawInfernal(t);
-    drawBombs();
+  if (G.level === 2 && G.def) {
+    drawDefLanes();
+    const foes = G.def.foes.slice().sort((a, b) => a.lane - b.lane);
+    for (const f of foes) if (f.lane < 1) drawInfernal(f);
+    drawCore();
+    drawHinawaStand();
+    for (const f of foes) if (f.lane >= 1) drawInfernal(f);
+    drawPosts();
   } else {
+    drawRoad();
     // сущности — от дальней полосы к ближней
     const ents = [];
     for (const e of G.enemies) ents.push({ lane: e.lane, z: 0, o: e, kind: 'e' });
@@ -2542,7 +2574,7 @@ function render() {
   drawParticles();
   drawWarnings();
   drawPops();
-  if (G.level === 2) { drawBullets(); drawSuperShot(); drawCrosshair(); }
+  if (G.level === 2 && G.def) { drawDefShots(); drawSuperShot(); }
   drawUlt();
 
   // линии скорости на высоком духе
@@ -2595,15 +2627,21 @@ function frame(now) {
   last = now;
   if (dt > 0.05) dt = 0.05;
 
-  if (G.mode === 'play') update(dt);
-  else idleUpdate(dt);
-
-  render();
+  try {
+    if (G.mode === 'play') update(dt);
+    else idleUpdate(dt);
+    render();
+  } catch (err) {
+    window.__lastErr = (err && err.stack) || String(err);
+    console.error(err);
+  }
   requestAnimationFrame(frame);
 }
 
 window.G = G; window.__spawn = doSpawn; window.__snd = Snd; window.__music = Music;
 window.__dbg = () => ({ VW, VH, SCALE, OY, ax: playerX() });
+window.__step = (dt, n) => { for (let i = 0; i < (n || 1); i++) update(dt || 1 / 60); };
+window.__render = render;
 layout();
 requestAnimationFrame(frame);
 
