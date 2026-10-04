@@ -128,6 +128,50 @@
     margin: 0 1px;
   }
 
+  /* ===== Выбор уровня ===== */
+  .levels {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    width: 100%; max-width: 680px;
+    margin: 4px 0 14px;
+  }
+  @media (max-width: 560px) { .levels { grid-template-columns: 1fr; gap: 8px; } }
+
+  .lvl {
+    display: flex; flex-direction: column; gap: 3px;
+    text-align: left;
+    font-family: var(--font-body);
+    color: var(--ink);
+    background: linear-gradient(160deg, rgba(255,255,255,.1), rgba(255,255,255,.04));
+    border: 2px solid rgba(255,255,255,.18);
+    border-left: 5px solid var(--flame);
+    border-radius: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: transform .08s, border-color .12s, background .12s;
+  }
+  .lvl[data-level="2"] { border-left-color: var(--blue); }
+  .lvl:hover { background: rgba(255,255,255,.14); border-color: var(--gold); transform: translateY(-2px); }
+  .lvl:active { transform: translateY(1px); }
+  .lvl-n {
+    font-family: var(--font-display);
+    font-size: .62rem; letter-spacing: .18em; color: var(--flame);
+  }
+  .lvl[data-level="2"] .lvl-n { color: var(--blue); }
+  .lvl-t {
+    font-family: var(--font-display);
+    font-size: clamp(.9rem, min(3.4vw, 3.8vh), 1.25rem);
+    color: var(--gold); letter-spacing: .02em;
+  }
+  .lvl-d { font-size: clamp(.7rem, min(2.5vw, 2.7vh), .88rem); line-height: 1.45; color: var(--ink); }
+  .lvl-k {
+    font-family: var(--font-display);
+    font-size: .6rem; letter-spacing: .06em; color: var(--ink-dim);
+    margin-top: 2px;
+  }
+  .lvl-best { font-size: .66rem; color: var(--gold); min-height: .9em; }
+
   .btn {
     font-family: var(--font-display);
     font-size: clamp(.92rem, min(4vw, 4.6vh), 1.35rem);
@@ -233,21 +277,27 @@
   <div class="screen on" id="startScreen">
     <div class="badge">SPECIAL FIRE FORCE · COMPANY 8</div>
     <h1>БРИГАДА <span class="n">8</span></h1>
-    <div class="sub">УРОВЕНЬ 1 — РЫЦАРЬ НА «СПИЧЕЧНОМ КОРОБКЕ»</div>
-    <div class="who">Артур Бойл · меч Экскалибур · броневик «Спичечный коробок»</div>
-    <p class="rules">
-      Броневик бригады несётся по огненной улице. <b>Вверх / вниз</b> — сменить полосу,
-      <b>удар</b> — рубить огневиков и упокоить их.<br>
-      Горящие машины рубить нельзя — только объезжать!<br>
-      Бей без промаха — копится <b>Рыцарский дух</b>, и меч синеет.
-      Полная шкала — жми <b>ЭКСКАЛИБУР</b> и сноси всех разом.
-    </p>
-    <p class="rules" style="border-left-color:var(--blue)">
-      <span class="desk">Клавиши: <span class="key">↑</span><span class="key">↓</span> полоса,
-      <span class="key">ПРОБЕЛ</span> удар, <span class="key">E</span> Экскалибур.</span>
-      <span class="touch">На телефоне: свайп вверх/вниз — полоса, тап по экрану — удар.</span>
-    </p>
-    <button class="btn" id="startBtn">🔥 ВЫЕЗД!</button>
+    <div class="sub">КТО ВЫЕЗЖАЕТ НА ВЫЗОВ?</div>
+
+    <div class="levels">
+      <button class="lvl" data-level="1">
+        <span class="lvl-n">УРОВЕНЬ 1</span>
+        <span class="lvl-t">АРТУР БОЙЛ</span>
+        <span class="lvl-d">Рубит огневиков Экскалибуром с крыши броневика. Горящие машины — объезжать!</span>
+        <span class="lvl-k desk">↑ ↓ полоса · ПРОБЕЛ удар · E Экскалибур</span>
+        <span class="lvl-k touch">свайп вверх/вниз — полоса, тап — удар</span>
+        <span class="lvl-best" id="best1"></span>
+      </button>
+      <button class="lvl" data-level="2">
+        <span class="lvl-n">УРОВЕНЬ 2</span>
+        <span class="lvl-t">ЛЕЙТЕНАНТ ХИНАВА</span>
+        <span class="lvl-d">Снимает огневиков издалека огненными пулями — с крыш и с дороги. Патронов мало, по людям не стрелять!</span>
+        <span class="lvl-k desk">мышь — прицел · клик — выстрел · E супер пуля</span>
+        <span class="lvl-k touch">тап по цели — выстрел, кнопка — супер пуля</span>
+        <span class="lvl-best" id="best2"></span>
+      </button>
+    </div>
+
     <a class="btn ghost" href="../../">← в мастерскую</a>
   </div>
 
@@ -257,12 +307,13 @@
     <div class="verdict" id="verdict">Настоящий рыцарь!</div>
     <div class="stats">
       <div class="stat"><div class="v" id="stKills">0</div><div class="k">упокоено</div></div>
-      <div class="stat"><div class="v" id="stCombo">0</div><div class="k">комбо</div></div>
+      <div class="stat"><div class="v" id="stCombo">0</div><div class="k" id="stComboK">комбо</div></div>
       <div class="stat"><div class="v" id="stScore">0</div><div class="k">очки</div></div>
     </div>
     <div class="best" id="bestLine"></div>
     <div class="row">
       <button class="btn" id="againBtn">ЕЩЁ РАЗ</button>
+      <button class="btn ghost" id="menuBtn" style="margin-top:0">ДРУГОЙ ГЕРОЙ</button>
     </div>
     <a class="btn ghost" href="../../">← в мастерскую</a>
   </div>
@@ -354,6 +405,10 @@ const Snd = (() => {
     on,
     ctx: () => ac,
     slash() { noise(.14, .09, 1600); tone(900, 320, .12, 'sawtooth', .07); },
+    shot()  { noise(.09, .14, 2200); tone(620, 140, .09, 'square', .09); },
+    dry()   { tone(170, 120, .05, 'square', .07); },
+    reload(){ tone(300, 300, .04, 'square', .07); tone(420, 420, .05, 'square', .07, .13); },
+    boom()  { tone(120, 40, .35, 'sawtooth', .15); noise(.3, .1, 400); },
     kill()  { tone(680, 1300, .12, 'triangle', .13); tone(320, 90, .2, 'sine', .12, .02); },
     hurt()  { tone(180, 60, .38, 'sawtooth', .17); noise(.2, .08, 300); },
     lane()  { tone(520, 720, .07, 'sine', .07); },
@@ -369,7 +424,11 @@ const Snd = (() => {
 // Ходы: Em → C → G → D, 160 ударов в минуту, галоп восьмыми.
 const Music = (() => {
   const BPM = 160, STEP = (60 / BPM) / 4;      // шестнадцатая
-  const BARS = [82.41, 65.41, 98.00, 73.42];   // E2, C2, G2, D2
+  const THEMES = {
+    1: [82.41, 65.41, 98.00, 73.42],           // E2, C2, G2, D2 — ход Артура
+    2: [73.42, 98.00, 110.00, 82.41]           // D2, G2, A2, E2 — ход Хинавы, посветлее
+  };
+  let BARS = THEMES[1];
   const LEAD = [                                // мотив по ми-минорной пентатонике
     [659.3, 0, 784.0, 0, 659.3, 0, 587.3, 0, 493.9, 0, 0, 0, 587.3, 0, 0, 0],
     [523.3, 0, 587.3, 0, 659.3, 0, 0, 0, 587.3, 0, 523.3, 0, 0, 0, 0, 0],
@@ -490,6 +549,7 @@ const Music = (() => {
   }
   return {
     isOn: () => enabled,
+    setTheme(n) { BARS = THEMES[n] || THEMES[1]; },
     start() {
       if (!enabled || playing || !init()) return;
       playing = true;
@@ -566,8 +626,15 @@ buildCity();
 const GOAL = 19000;      // длина вызова в «метрах» — примерно минута езды
 const MAX_HEARTS = 4;
 
+const MAG = 6;           // патронов в обойме у Хинавы
+
 const G = {
   mode: 'menu',        // menu | play | over
+  level: 1,            // 1 — Артур (меч), 2 — Хинава (стрельба)
+  // --- уровень 2 ---
+  targets: [], bullets: [], bombs: [],
+  aim: { x: 0, y: 0 }, ammo: MAG, reload: 0, recoil: 0,
+  shots: 0, hits: 0, superShot: null, keys: {},
   t: 0, dist: 0, speed: 250,
   laneF: 1, lane: 1,
   hearts: MAX_HEARTS, score: 0, combo: 0, maxCombo: 0,
@@ -583,9 +650,14 @@ const G = {
   finishing: false
 };
 
-function reset() {
-  G.mode = 'play'; G.t = 0; G.dist = 0; G.speed = 250;
+function reset(level) {
+  G.mode = 'play'; G.level = level || 1;
+  G.t = 0; G.dist = 0; G.speed = 250;
   G.laneF = 1; G.lane = 1;
+  G.targets = []; G.bullets = []; G.bombs = [];
+  G.ammo = MAG; G.reload = 0; G.recoil = 0; G.shots = 0; G.hits = 0;
+  G.superShot = null; G.keys = {};
+  G.aim = { x: VW * 0.6, y: VH * 0.5 };
   G.hearts = MAX_HEARTS; G.score = 0; G.combo = 0; G.maxCombo = 0;
   G.kills = 0; G.spawned = 0;
   G.spirit = 0; G.ultReady = false;
@@ -659,6 +731,311 @@ function doSpawn() {
 }
 
 // ============================================================
+//  Уровень 2 — Хинава: прицел, выстрелы, бомбы, супер пуля
+// ============================================================
+
+// Экранная точка из координат указателя
+function toLogical(clientX, clientY) {
+  const r = wrap.getBoundingClientRect();
+  return { x: (clientX - r.left) / SCALE, y: (clientY - r.top) / SCALE - OY };
+}
+
+// Плечо стрелка и дуло — отсюда летят пули
+function riderShoulder() {
+  const ly = laneY();
+  const y = lerp(ly[0], ly[2], G.laneF / 2);
+  const hs = lerp(LANE_SCALE[0], LANE_SCALE[2], G.laneF / 2) * 1.3;
+  return { x: playerX() - 20 * hs, y: y - 96 * hs, hs };
+}
+function muzzle() {
+  const sh = riderShoulder();
+  const a = Math.atan2(G.aim.y - sh.y, G.aim.x - sh.x);
+  return { x: sh.x + Math.cos(a) * 54 * sh.hs, y: sh.y + Math.sin(a) * 54 * sh.hs, a };
+}
+
+// Экранная геометрия цели — её же используем для попаданий
+function targetGeom(t) {
+  if (t.kind === 'roof') return { y: horizon() - t.ry, s: t.s };
+  if (t.kind === 'civil') return { y: horizon() + 18, s: .62 };
+  return { y: laneY()[t.lane], s: LANE_SCALE[t.lane] };
+}
+
+function spawnTarget() {
+  const p = G.dist / GOAL;
+  const r = Math.random();
+  if (r < .17) {
+    G.targets.push({ kind: 'civil', x: VW + rnd(20, 80), seed: rnd(0, 100), ph: rnd(0, 10), dying: 0, scared: 0 });
+  } else if (r < .46) {
+    G.targets.push({
+      kind: 'roof', x: VW + rnd(20, 90), ry: rnd(60, 185), s: rnd(.5, .66), hp: 1,
+      seed: rnd(0, 100), ph: rnd(0, 10), dying: 0, throwT: rnd(1.2, 2.4)
+    });
+    G.spawned++;
+  } else {
+    const big = p > .3 && Math.random() < .2;
+    G.targets.push({
+      kind: 'road', x: VW + rnd(20, 80), lane: Math.floor(rnd(0, 3)),
+      hp: big ? 2 : 1, big, seed: rnd(0, 100), ph: rnd(0, 10), dying: 0,
+      walk: rnd(30, 80) + p * 70
+    });
+    G.spawned++;
+  }
+}
+
+// Что находится под прицелом (щедрые рамки — ребёнку должно быть не обидно)
+function pickTarget(tx, ty) {
+  let best = null, bestD = 1e9;
+  for (const b of G.bombs) {
+    if (b.dead) continue;
+    const d = Math.hypot(b.x - tx, b.y - ty);
+    if (d < 26 && d < bestD) { best = b; bestD = d; }
+  }
+  for (const t of G.targets) {
+    if (t.dying) continue;
+    const g = targetGeom(t);
+    const halfW = (t.kind === 'civil' ? 26 : 34) * g.s + 8;
+    const top = g.y - (t.kind === 'civil' ? 78 : 118) * g.s - 6;
+    if (tx > t.x - halfW && tx < t.x + halfW && ty > top && ty < g.y + 10) {
+      const d = Math.hypot(t.x - tx, (g.y - 50 * g.s) - ty);
+      if (d < bestD) { best = t; bestD = d; }
+    }
+  }
+  return best;
+}
+
+function killTarget(t, bonus) {
+  const g = targetGeom(t);
+  t.dying = .45;
+  G.kills++;
+  G.combo++;
+  G.maxCombo = Math.max(G.maxCombo, G.combo);
+  const mult = 1 + Math.min(4, Math.floor(G.combo / 4));
+  const gain = (bonus || (t.kind === 'roof' ? 150 : 100)) * mult;
+  G.score += gain;
+  G.spirit = Math.min(100, G.spirit + (t.big ? 13 : 9));
+  if (G.spirit >= 100 && !G.ultReady && !G.superShot) {
+    G.ultReady = true;
+    ultBtn.classList.add('on');
+    Snd.charge();
+    pop(playerX() + 60, VH - 300, 'СУПЕР ПУЛЯ ГОТОВА!', '#8fe6ff', 24);
+  }
+  G.hitStop = Math.max(G.hitStop, .05);
+  G.flash = Math.max(G.flash, .26); G.flashColor = '255,255,255';
+  Snd.kill();
+  burst(t.x, g.y - 55 * g.s, 15);
+  part(t.x, g.y - 60 * g.s, { vx: rnd(-20, 20), vy: -110, life: 1.1, max: 1.1, size: 9, col: '160,230,255', kind: 'soul' });
+  pop(t.x, g.y - 108 * g.s, mult > 1 ? '+' + gain + '  x' + mult : '+' + gain, mult >= 4 ? '#8fe6ff' : '#ffd23f', 18 + mult * 2);
+  if (G.combo > 0 && G.combo % 5 === 0) pop(t.x + 26, g.y - 146 * g.s, 'ЛАТОМ!', '#fff0c0', 22);
+}
+
+function missShot(x, y) {
+  G.combo = 0;
+  G.spirit = Math.max(0, G.spirit - 10);
+  if (G.spirit < 100) { G.ultReady = false; ultBtn.classList.remove('on'); }
+  burst(x, y, 5, '200,200,220');
+}
+
+function shoot() {
+  if (G.mode !== 'play' || G.level !== 2 || G.superShot) return;
+  if (G.reload > 0) return;
+  if (G.ammo <= 0) { G.reload = 1.1; Snd.dry(); return; }
+  G.ammo--; G.shots++;
+  Snd.shot();
+  const m = muzzle();
+  const hit = pickTarget(G.aim.x, G.aim.y);
+  G.bullets.push({ x0: m.x, y0: m.y, tx: G.aim.x, ty: G.aim.y, t: 0, dur: .12, hit });
+  G.recoil = .14;
+  burst(m.x, m.y, 4, '255,220,140');
+  if (G.ammo === 0) G.reload = 1.15;
+}
+
+function fireSuper() {
+  if (G.mode !== 'play' || !G.ultReady || G.superShot) return;
+  G.ultReady = false; G.spirit = 0; G.ammo = MAG; G.reload = 0;
+  ultBtn.classList.remove('on');
+  const chain = G.targets
+    .filter(t => !t.dying && t.kind !== 'civil')
+    .sort((a, b) => a.x - b.x);
+  const m = muzzle();
+  G.superShot = { t: 0, i: -1, step: .12, chain, pts: [{ x: m.x, y: m.y }], x: m.x, y: m.y };
+  G.flash = .5; G.flashColor = '255,210,120';
+  G.shake = 12;
+  Snd.ult();
+  pop(playerX() + 140, VH - 310, 'СУПЕР ПУЛЯ!', '#ffd76a', 38);
+}
+
+function updateSuper(dt) {
+  const s = G.superShot;
+  s.t += dt;
+  const idx = Math.floor(s.t / s.step) - 1;
+  while (s.i < idx && s.i < s.chain.length - 1) {
+    s.i++;
+    const t = s.chain[s.i];
+    const g = targetGeom(t);
+    const px = t.x, py = g.y - 55 * g.s;
+    s.pts.push({ x: px, y: py });
+    s.x = px; s.y = py;
+    if (!t.dying) killTarget(t, 260);
+    G.hitStop = 0;
+    G.shake = Math.max(G.shake, 7);
+  }
+  if (s.t > (s.chain.length + 1) * s.step + .45) G.superShot = null;
+}
+
+function updateHinawa(dt) {
+  const ax = playerX();
+  const ly = laneY();
+  const prog = G.dist / GOAL;
+
+  // прицел с клавиатуры
+  const sp = 460 * dt;
+  if (G.keys.left) G.aim.x -= sp;
+  if (G.keys.right) G.aim.x += sp;
+  if (G.keys.up) G.aim.y -= sp;
+  if (G.keys.down) G.aim.y += sp;
+  G.aim.x = clamp(G.aim.x, 20, VW - 20);
+  G.aim.y = clamp(G.aim.y, 20, VH - 20);
+
+  if (G.recoil > 0) G.recoil -= dt;
+
+  // перезарядка
+  if (G.reload > 0) {
+    G.reload -= dt;
+    if (G.reload <= 0) { G.ammo = MAG; G.reload = 0; Snd.reload(); }
+  }
+
+  // спавн целей
+  if (!G.finishing) {
+    G.spawnTimer -= dt;
+    if (G.spawnTimer <= 0) {
+      spawnTarget();
+      G.spawnTimer = lerp(1.3, .62, prog) * rnd(.82, 1.18);
+    }
+  }
+  if (G.dist >= GOAL) G.finishing = true;
+  if (G.finishing && G.targets.length === 0 && G.bombs.length === 0) endLevel(true);
+
+  // цели
+  for (let i = G.targets.length - 1; i >= 0; i--) {
+    const t = G.targets[i];
+    const g = targetGeom(t);
+    t.gy = g.y; t.gs = g.s;
+    if (t.dying > 0) {
+      t.dying -= dt;
+      t.x -= G.speed * dt * .5;
+      if (t.dying <= 0) G.targets.splice(i, 1);
+      continue;
+    }
+    if (t.kind === 'roof') {
+      t.x -= G.speed * 0.32 * dt;        // крыши уезжают вместе с городом
+      t.ph += dt * 5;
+      t.throwT -= dt;
+      if (t.throwT <= 0 && t.x < VW - 40 && t.x > ax + 120) {
+        t.throwT = rnd(2.2, 4.2);
+        const T = 1.7;
+        const tx = ax + rnd(-30, 30), ty = ly[1] - 40;
+        G.bombs.push({
+          x: t.x, y: g.y - 60 * g.s,
+          vx: (tx - t.x) / T, vy: (ty - (g.y - 60 * g.s)) / T - .5 * 900 * T,
+          ty, kind: 'bomb', seed: rnd(0, 100), dead: 0
+        });
+      }
+    } else if (t.kind === 'civil') {
+      t.x -= G.speed * dt;
+      t.ph += dt * 6;
+      if (t.scared > 0) t.scared -= dt;
+    } else {
+      t.x -= (G.speed + t.walk) * dt;
+      t.ph += dt * 7;
+      if (Math.random() < .3) {
+        part(t.x + rnd(-10, 10), g.y - rnd(20, 70) * g.s, {
+          vx: rnd(-30, 10) - G.speed * .25, vy: rnd(-80, -30), life: rnd(.3, .7), max: .7,
+          size: rnd(2, 4), col: pick(['255,150,50', '255,200,90'])
+        });
+      }
+      // дошёл до броневика
+      if (t.x - ax < 78) {
+        hurt();
+        t.dying = .3;
+        burst(t.x, g.y - 50 * g.s, 12, '255,120,60');
+        continue;
+      }
+    }
+    if (t.x < -140) {
+      const missed = t.kind !== 'civil';
+      G.targets.splice(i, 1);
+      if (missed) {
+        G.combo = 0;
+        G.spirit = Math.max(0, G.spirit - 12);
+        if (G.spirit < 100) { G.ultReady = false; ultBtn.classList.remove('on'); }
+      }
+    }
+  }
+
+  // огненные бомбы
+  for (let i = G.bombs.length - 1; i >= 0; i--) {
+    const b = G.bombs[i];
+    if (b.dead) { b.dead -= dt; if (b.dead <= 0) G.bombs.splice(i, 1); continue; }
+    b.vy += 900 * dt;
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    if (Math.random() < .7) {
+      part(b.x, b.y, {
+        vx: rnd(-20, 20), vy: rnd(-10, 30), life: rnd(.25, .5), max: .5,
+        size: rnd(2, 5), col: pick(['255,160,50', '255,90,40'])
+      });
+    }
+    if (b.y >= b.ty) {
+      burst(b.x, b.y, 18, '255,120,50');
+      Snd.boom();
+      G.shake = Math.max(G.shake, 9);
+      if (Math.abs(b.x - ax) < 95) hurt();
+      b.dead = .2;
+    } else if (b.x < -60) G.bombs.splice(i, 1);
+  }
+
+  // пули
+  for (let i = G.bullets.length - 1; i >= 0; i--) {
+    const u = G.bullets[i];
+    u.t += dt;
+    if (u.t < u.dur) continue;
+    const h = u.hit;
+    if (!h) {
+      missShot(u.tx, u.ty);
+    } else if (h.kind === 'bomb') {                          // сбил бомбу в воздухе
+      if (!h.dead) {
+        h.dead = .2;
+        G.hits++;
+        G.score += 120;
+        burst(h.x, h.y, 16, '255,200,90');
+        pop(h.x, h.y - 30, 'СБИЛ! +120', '#ffd23f', 20);
+        Snd.kill();
+      }
+    } else if (h.kind === 'civil') {
+      G.hits++;                      // попал, но не туда
+      h.scared = 1.6;
+      G.combo = 0;
+      G.score = Math.max(0, G.score - 150);
+      G.spirit = Math.max(0, G.spirit - 25);
+      if (G.spirit < 100) { G.ultReady = false; ultBtn.classList.remove('on'); }
+      const g = targetGeom(h);
+      burst(h.x + 20, g.y, 10, '190,190,210');
+      pop(h.x, g.y - 90, 'ТАМ ЛЮДИ!', '#ff6a4a', 24);
+      Snd.hurt();
+    } else if (!h.dying) {
+      h.hp--;
+      G.hits++;
+      if (h.hp <= 0) killTarget(h);
+      else {
+        const g = targetGeom(h);
+        burst(h.x, g.y - 60 * g.s, 8, '255,240,180');
+        G.score += 40;
+      }
+    }
+    G.bullets.splice(i, 1);
+  }
+}
+
+// ============================================================
 //  Управление
 // ============================================================
 function changeLane(d) {
@@ -684,33 +1061,81 @@ function fireUlt() {
   pop(playerX() + 120, VH - 300, 'ЭКСКАЛИБУР!', '#8fe6ff', 40);
 }
 
+function superOrUlt() { if (G.level === 2) fireSuper(); else fireUlt(); }
+
 addEventListener('keydown', e => {
-  if (e.repeat) return;
   const k = e.key.toLowerCase();
-  if (['arrowup', 'w', 'ц', 'arrowdown', 's', 'ы', ' ', 'arrowright', 'd', 'в', 'e', 'у', 'enter'].includes(k)) e.preventDefault();
+  if (['arrowup', 'w', 'ц', 'arrowdown', 's', 'ы', 'arrowleft', 'a', 'ф',
+       ' ', 'arrowright', 'd', 'в', 'e', 'у', 'r', 'к', 'enter'].includes(k)) e.preventDefault();
   Snd.on();
-  if (G.mode === 'menu' && (k === 'enter' || k === ' ')) { startGame(); return; }
-  if (G.mode === 'over' && (k === 'enter' || k === ' ')) { startGame(); return; }
+  if (G.level === 2 && G.mode === 'play') {
+    if (k === 'arrowup' || k === 'w' || k === 'ц') G.keys.up = 1;
+    if (k === 'arrowdown' || k === 's' || k === 'ы') G.keys.down = 1;
+    if (k === 'arrowleft' || k === 'a' || k === 'ф') G.keys.left = 1;
+    if (k === 'arrowright' || k === 'd' || k === 'в') G.keys.right = 1;
+  }
+  if (e.repeat) return;
+  if (G.mode === 'menu' && (k === 'enter' || k === ' ')) { startGame(1); return; }
+  if (G.mode === 'over' && (k === 'enter' || k === ' ')) { startGame(G.level); return; }
+  if (G.level === 2) {
+    if (k === ' ') shoot();
+    else if (k === 'e' || k === 'у') fireSuper();
+    else if ((k === 'r' || k === 'к') && G.ammo < MAG && G.reload <= 0) { G.reload = 1.15; Snd.dry(); }
+    return;
+  }
   if (k === 'arrowup' || k === 'w' || k === 'ц') changeLane(-1);
   else if (k === 'arrowdown' || k === 's' || k === 'ы') changeLane(1);
   else if (k === ' ' || k === 'arrowright' || k === 'd' || k === 'в') slash();
   else if (k === 'e' || k === 'у') fireUlt();
 });
 
-// Мышь — удар
-cv.addEventListener('mousedown', () => { Snd.on(); slash(); });
+addEventListener('keyup', e => {
+  const k = e.key.toLowerCase();
+  if (k === 'arrowup' || k === 'w' || k === 'ц') G.keys.up = 0;
+  if (k === 'arrowdown' || k === 's' || k === 'ы') G.keys.down = 0;
+  if (k === 'arrowleft' || k === 'a' || k === 'ф') G.keys.left = 0;
+  if (k === 'arrowright' || k === 'd' || k === 'в') G.keys.right = 0;
+});
 
-// Тач: свайп вверх/вниз — полоса, короткий тап — удар
+// Мышь: уровень 1 — удар, уровень 2 — прицел и выстрел
+cv.addEventListener('mousemove', e => {
+  if (G.level !== 2) return;
+  const p = toLogical(e.clientX, e.clientY);
+  G.aim.x = p.x; G.aim.y = p.y;
+});
+cv.addEventListener('mousedown', e => {
+  Snd.on();
+  if (G.level === 2) {
+    const p = toLogical(e.clientX, e.clientY);
+    G.aim.x = p.x; G.aim.y = p.y;
+    shoot();
+  } else slash();
+});
+
+// Тач: уровень 1 — свайп/тап, уровень 2 — тап по цели стреляет
 let touchStart = null;
 cv.addEventListener('touchstart', e => {
   Snd.on();
   const t = e.changedTouches[0];
+  if (G.level === 2) {
+    const p = toLogical(t.clientX, t.clientY);
+    G.aim.x = p.x; G.aim.y = p.y;
+    shoot();
+    e.preventDefault();
+    return;
+  }
   touchStart = { x: t.clientX, y: t.clientY, t: performance.now(), moved: false };
   e.preventDefault();
 }, { passive: false });
 cv.addEventListener('touchmove', e => {
-  if (!touchStart || touchStart.moved) return;
   const t = e.changedTouches[0];
+  if (G.level === 2) {
+    const p = toLogical(t.clientX, t.clientY);
+    G.aim.x = p.x; G.aim.y = p.y;
+    e.preventDefault();
+    return;
+  }
+  if (!touchStart || touchStart.moved) return;
   const dy = t.clientY - touchStart.y, dx = t.clientX - touchStart.x;
   if (Math.abs(dy) > 26 && Math.abs(dy) > Math.abs(dx)) {
     changeLane(dy < 0 ? -1 : 1);
@@ -719,23 +1144,44 @@ cv.addEventListener('touchmove', e => {
   e.preventDefault();
 }, { passive: false });
 cv.addEventListener('touchend', e => {
-  if (touchStart && !touchStart.moved && performance.now() - touchStart.t < 350) slash();
+  if (G.level !== 2 && touchStart && !touchStart.moved && performance.now() - touchStart.t < 350) slash();
   touchStart = null;
   e.preventDefault();
 }, { passive: false });
 
-ultBtn.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); Snd.on(); fireUlt(); }, { passive: false });
-ultBtn.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); fireUlt(); });
+ultBtn.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); Snd.on(); superOrUlt(); }, { passive: false });
+ultBtn.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); superOrUlt(); });
 
-document.getElementById('startBtn').onclick = () => { Snd.on(); startGame(); };
-document.getElementById('againBtn').onclick = () => { Snd.on(); startGame(); };
+document.querySelectorAll('.lvl').forEach(b => {
+  b.onclick = () => { Snd.on(); startGame(+b.dataset.level); };
+});
+document.getElementById('againBtn').onclick = () => { Snd.on(); startGame(G.level); };
+document.getElementById('menuBtn').onclick = () => {
+  resultScreen.classList.remove('on');
+  startScreen.classList.add('on');
+  G.mode = 'menu';
+  showBests();
+};
 
-function startGame() {
+function startGame(level) {
   startScreen.classList.remove('on');
   resultScreen.classList.remove('on');
-  reset();
+  reset(level);
+  ultBtn.innerHTML = level === 2 ? 'СУПЕР<br>ПУЛЯ' : 'ЭКС-<br>КАЛИБУР';
+  Music.setTheme(level);
   Music.start();
 }
+
+// Рекорды на карточках выбора уровня
+function showBests() {
+  for (const n of [1, 2]) {
+    let b = null;
+    try { b = JSON.parse(localStorage.getItem('brigada8.lvl' + n) || 'null'); } catch (e) {}
+    const el = document.getElementById('best' + n);
+    if (el) el.textContent = b ? '🏅 рекорд ' + b.score + ' · ранг ' + b.rank : '';
+  }
+}
+showBests();
 
 const musicBtn = document.getElementById('musicBtn');
 if (!Music.isOn()) musicBtn.classList.add('off');
@@ -800,6 +1246,9 @@ function update(dt) {
   // хит-стоп: кадр «застывает» на удар — приём из аниме
   if (G.hitStop > 0) { G.hitStop -= dt; return; }
 
+  // супер пуля летит в замершем мире
+  if (G.superShot) { updateSuper(dt); updateFx(dt); return; }
+
   const ax = playerX();
   const ly = laneY();
 
@@ -844,6 +1293,9 @@ function update(dt) {
       size: rnd(2, 5), col: pick(['255,190,80', '255,120,50'])
     });
   }
+
+  // ---- Уровень 2 живёт по своим правилам ----
+  if (G.level === 2) { updateHinawa(dt); updateFx(dt); return; }
 
   // ---- Спавн ----
   if (!G.finishing) {
@@ -937,7 +1389,11 @@ function update(dt) {
     if (G.warns[i].t > 1.1) G.warns.splice(i, 1);
   }
 
-  // ---- Частицы и всплывашки ----
+  updateFx(dt);
+}
+
+// ---- Частицы, всплывашки и фоновые угольки ----
+function updateFx(dt) {
   for (let i = G.parts.length - 1; i >= 0; i--) {
     const p = G.parts[i];
     p.life -= dt;
@@ -952,8 +1408,6 @@ function update(dt) {
     p.t += dt; p.y -= 46 * dt; p.x -= G.speed * dt * .35;
     if (p.t > p.life) G.pops.splice(i, 1);
   }
-
-  // фоновые угольки
   if (Math.random() < .8) {
     part(rnd(0, VW), VH - rnd(0, ROAD_H), {
       vx: rnd(-60, -10), vy: rnd(-70, -25), life: rnd(1, 2.2), max: 2.2,
@@ -966,29 +1420,45 @@ function endLevel(won) {
   G.mode = 'over';
   ultBtn.classList.remove('on');
   const acc = G.spawned ? G.kills / G.spawned : 0;
-  let rank = 'C', verdict = 'Рыцарь-стажёр. Ещё разок!';
-  if (won && G.hearts === MAX_HEARTS && acc >= .9) { rank = 'S'; verdict = 'Рыцарь короля! Идеально.'; }
-  else if (won && acc >= .78 && G.hearts >= MAX_HEARTS - 1) { rank = 'A'; verdict = 'Отличная работа, сэр Артур!'; }
-  else if (won && acc >= .55) { rank = 'B'; verdict = 'Неплохо, но огневики проскочили.'; }
-  else if (won) { rank = 'C'; verdict = 'Доехал — и на том спасибо.'; }
-  else { rank = 'C'; verdict = 'Коробок сгорел. Пробуем снова!'; }
+  const lvl2 = G.level === 2;
+  let rank = 'C', verdict = 'Стажёр. Ещё разок!';
+  if (won && G.hearts === MAX_HEARTS && acc >= .9) {
+    rank = 'S'; verdict = lvl2 ? 'Ни одного промаха. Снайпер!' : 'Рыцарь короля! Идеально.';
+  } else if (won && acc >= .78 && G.hearts >= MAX_HEARTS - 1) {
+    rank = 'A'; verdict = lvl2 ? 'Чисто отработал, лейтенант!' : 'Отличная работа, сэр Артур!';
+  } else if (won && acc >= .55) {
+    rank = 'B'; verdict = 'Неплохо, но огневики проскочили.';
+  } else if (won) {
+    rank = 'C'; verdict = 'Доехал — и на том спасибо.';
+  } else {
+    rank = 'C'; verdict = lvl2 ? 'Броневик не дотянул. Ещё раз!' : 'Коробок сгорел. Пробуем снова!';
+  }
 
   document.getElementById('resTitle').textContent = won ? 'ВЫЗОВ ЗАКРЫТ' : 'ВЫЗОВ ПРОВАЛЕН';
   const rl = document.getElementById('rankLetter');
   rl.textContent = rank; rl.className = 'rank ' + rank;
   document.getElementById('verdict').textContent = verdict;
   document.getElementById('stKills').textContent = G.kills + '/' + G.spawned;
-  document.getElementById('stCombo').textContent = 'x' + G.maxCombo;
+  if (lvl2) {
+    document.getElementById('stCombo').textContent =
+      (G.shots ? Math.round(G.hits / G.shots * 100) : 0) + '%';
+    document.getElementById('stComboK').textContent = 'меткость';
+  } else {
+    document.getElementById('stCombo').textContent = 'x' + G.maxCombo;
+    document.getElementById('stComboK').textContent = 'комбо';
+  }
   document.getElementById('stScore').textContent = G.score;
 
-  // рекорд
+  // рекорд — у каждого уровня свой
+  const key = 'brigada8.lvl' + G.level;
   let best = { score: 0, rank: '-' };
-  try { best = JSON.parse(localStorage.getItem('brigada8.lvl1') || 'null') || best; } catch (e) {}
+  try { best = JSON.parse(localStorage.getItem(key) || 'null') || best; } catch (e) {}
   const isNew = G.score > (best.score || 0);
   if (isNew) {
     best = { score: G.score, rank: rank };
-    try { localStorage.setItem('brigada8.lvl1', JSON.stringify(best)); } catch (e) {}
+    try { localStorage.setItem(key, JSON.stringify(best)); } catch (e) {}
   }
+  showBests();
   document.getElementById('bestLine').textContent =
     isNew ? '🏅 Новый рекорд!' : 'Рекорд: ' + best.score + ' (ранг ' + best.rank + ')';
 
@@ -1162,9 +1632,11 @@ function drawRoad() {
 // Обугленный человек внутри огня: тёмный силуэт + оранжевая подсветка по краю,
 // раскалённые трещины и языки пламени спереди и сзади — чтобы не читался «чёрным кирпичом».
 function drawInfernal(e) {
-  const ly = laneY()[e.lane], s = LANE_SCALE[e.lane];
+  // На уровне 2 цель может стоять где угодно — тогда позиция приходит в gy/gs
+  const ly = e.gy != null ? e.gy : laneY()[e.lane];
+  const s = e.gs != null ? e.gs : LANE_SCALE[e.lane];
   const dying = e.dying > 0;
-  const big = e.kind === 'big';
+  const big = e.kind === 'big' || e.big;
   const sc = big ? 1.3 : 1;
   const t = G.t * 5 + e.seed;
   const walk = Math.sin(e.ph) * (e.kind === 'run' ? 1.1 : .7);
@@ -1320,24 +1792,8 @@ function drawCar(o) {
 const FONT = '"Arial Black","Segoe UI Black",Impact,system-ui,sans-serif';
 
 // ---------- Артур ----------
-function drawArthur() {
-  const ly = laneY();
-  const y = lerp(ly[0], ly[2], G.laneF / 2);
-  const s = lerp(LANE_SCALE[0], LANE_SCALE[2], G.laneF / 2);
-  const x = playerX();
-  const blink = G.invuln > 0 && Math.floor(G.t * 22) % 2 === 0;
-  const hs = s * 1.3;      // герой чуть крупнее огневиков — он тут главный
-
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(hs, hs);
-  if (blink) ctx.globalAlpha = .45;
-
-  const bob = Math.sin(G.bob * 9) * 2.5;
-
-  // выхлоп/след
-  glow(-86, -20, 66, '255,150,50', .5);
-
+// Броневик «Спичечный коробок» — общая техника для обоих уровней
+function drawTruckBody(bob) {
   // ==== «Спичечный коробок» — серый броневик 8-й бригады ====
   ctx.save();
   ctx.translate(0, bob * .3);
@@ -1440,6 +1896,27 @@ function drawArthur() {
   ctx.fillStyle = '#2b2f38';
   ctx.fillRect(-94, -34, 8, 6);
   ctx.restore();
+}
+
+function drawArthur() {
+  const ly = laneY();
+  const y = lerp(ly[0], ly[2], G.laneF / 2);
+  const s = lerp(LANE_SCALE[0], LANE_SCALE[2], G.laneF / 2);
+  const x = playerX();
+  const blink = G.invuln > 0 && Math.floor(G.t * 22) % 2 === 0;
+  const hs = s * 1.3;      // герой чуть крупнее огневиков — он тут главный
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(hs, hs);
+  if (blink) ctx.globalAlpha = .45;
+
+  const bob = Math.sin(G.bob * 9) * 2.5;
+
+  // выхлоп/след
+  glow(-86, -20, 66, '255,150,50', .5);
+
+  drawTruckBody(bob);
 
   // ==== Артур на крыше ====
   ctx.save();
@@ -1569,6 +2046,234 @@ function drawArthur() {
   }
 }
 
+// ============================================================
+//  Отрисовка уровня 2
+// ============================================================
+
+// Стрелок на крыше броневика: руки с пистолетом разворачиваются за прицелом
+function drawHinawaRig() {
+  const ly = laneY();
+  const y = lerp(ly[0], ly[2], G.laneF / 2);
+  const s = lerp(LANE_SCALE[0], LANE_SCALE[2], G.laneF / 2);
+  const x = playerX();
+  const blink = G.invuln > 0 && Math.floor(G.t * 22) % 2 === 0;
+  const hs = s * 1.3;
+  const bob = Math.sin(G.bob * 9) * 2.5;
+  const sh = riderShoulder();
+  const aimA = Math.atan2(G.aim.y - sh.y, G.aim.x - sh.x);
+  const kick = G.recoil > 0 ? clamp(G.recoil / .14, 0, 1) : 0;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(hs, hs);
+  if (blink) ctx.globalAlpha = .45;
+
+  glow(-86, -20, 66, '255,150,50', .5);
+  drawTruckBody(bob);
+
+  // ==== стрелок ====
+  ctx.save();
+  ctx.translate(-30 - kick * 2, -56 + bob);
+
+  // ноги в стойке
+  ctx.fillStyle = '#1d2440';
+  ctx.fillRect(-16, -18, 11, 20);
+  ctx.fillRect(5, -18, 11, 20);
+  ctx.fillStyle = '#141827';
+  ctx.fillRect(-18, -2, 15, 6);
+  ctx.fillRect(3, -2, 15, 6);
+
+  // китель бригады
+  const cg = ctx.createLinearGradient(0, -52, 0, -14);
+  cg.addColorStop(0, '#2f3856'); cg.addColorStop(1, '#1a2032');
+  ctx.fillStyle = cg;
+  roundRect(-16, -52, 32, 38, 6); ctx.fill();
+  ctx.fillStyle = '#ffd23f';
+  ctx.fillRect(-16, -30, 32, 4);
+  ctx.fillRect(-16, -23, 32, 2.5);
+  ctx.fillStyle = '#e0533a';          // погоны лейтенанта
+  ctx.fillRect(-16, -51, 9, 4);
+  ctx.fillRect(7, -51, 9, 4);
+
+  // голова, тёмные волосы, прищур
+  ctx.fillStyle = '#f0c49a';
+  ctx.beginPath(); ctx.arc(1, -62, 12, 0, 7); ctx.fill();
+  ctx.fillStyle = '#2b2430';
+  ctx.beginPath();
+  ctx.moveTo(-11, -63);
+  ctx.quadraticCurveTo(-13, -78, 2, -76);
+  ctx.quadraticCurveTo(14, -77, 12, -63);
+  ctx.quadraticCurveTo(5, -70, -11, -63);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#20364f';
+  ctx.beginPath(); ctx.ellipse(8, -61, 2.4, 1.7, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#1d1a22'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(4, -66); ctx.lineTo(12, -65); ctx.stroke();
+
+  // руки с пистолетом
+  ctx.save();
+  ctx.translate(10, -40);
+  ctx.rotate(aimA);
+  ctx.fillStyle = '#f0c49a';
+  ctx.fillRect(-4, -4.5, 26, 9);
+  ctx.fillStyle = '#2b2f38';
+  roundRect(20, -6, 20, 12, 2); ctx.fill();
+  ctx.fillRect(23, 5, 7, 9);
+  ctx.fillStyle = '#545b68';
+  ctx.fillRect(38, -4, 10, 6);
+  if (kick > 0) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = kick;
+    ctx.fillStyle = '#ffe9a8';
+    ctx.beginPath();
+    ctx.moveTo(48, -1); ctx.lineTo(64 + kick * 12, -10);
+    ctx.lineTo(57, -1); ctx.lineTo(64 + kick * 12, 8);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+
+  ctx.restore();
+  ctx.restore();
+
+  if (kick > 0) {
+    const m = muzzle();
+    glow(m.x, m.y, 64 * hs, '255,200,120', kick * .6);
+  }
+}
+
+// Житель, которого эвакуируют. Синяя метка — свой, стрелять нельзя.
+function drawCivil(c) {
+  const g = targetGeom(c), s = g.s;
+  const panic = c.scared > 0;
+  const wave = Math.sin(c.ph * (panic ? 3.2 : 1.6));
+  ctx.save();
+  ctx.translate(c.x, g.y);
+  ctx.scale(s, s);
+  ctx.fillStyle = 'rgba(0,0,0,.3)';
+  ctx.beginPath(); ctx.ellipse(0, 2, 20, 6, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#3c4a6b';
+  ctx.fillRect(-10, -34, 8, 34);
+  ctx.fillRect(3, -34, 8, 34);
+  ctx.fillStyle = '#7fd4ff';
+  roundRect(-14, -70, 28, 38, 6); ctx.fill();
+  ctx.fillStyle = '#eafcff';
+  ctx.fillRect(-14, -52, 28, 4);
+  ctx.fillStyle = '#ffd9b8';
+  ctx.beginPath(); ctx.arc(0, -80, 11, 0, 7); ctx.fill();
+  ctx.fillStyle = '#4a3f55';
+  ctx.beginPath(); ctx.arc(0, -82, 11, Math.PI, 0); ctx.fill();
+  ctx.save();                            // машет рукой
+  ctx.translate(12, -66);
+  ctx.rotate(-1.2 + wave * .5);
+  ctx.fillStyle = '#7fd4ff';
+  roundRect(0, -4, 24, 8, 4); ctx.fill();
+  ctx.restore();
+  ctx.restore();
+
+  // метка «свой»
+  const my = g.y - 104 * s, r = 11 * s;
+  ctx.save();
+  ctx.globalAlpha = panic ? .6 + Math.sin(G.t * 20) * .4 : .92;
+  ctx.fillStyle = panic ? '#ff6a4a' : '#3aa0d8';
+  ctx.beginPath(); ctx.arc(c.x, my, r, 0, 7); ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(c.x - r * .55, my - r * .18, r * 1.1, r * .36);
+  ctx.fillRect(c.x - r * .18, my - r * .55, r * .36, r * 1.1);
+  ctx.restore();
+}
+
+// Карниз под огневиком на крыше — чтобы он не висел в воздухе
+function drawRoofLedge(t) {
+  const g = targetGeom(t);
+  ctx.fillStyle = '#170e26';
+  ctx.fillRect(t.x - 48 * g.s, g.y, 96 * g.s, 20 * g.s);
+  ctx.fillStyle = 'rgba(255,140,60,.28)';
+  ctx.fillRect(t.x - 48 * g.s, g.y - 3, 96 * g.s, 3);
+}
+
+function drawBombs() {
+  for (const b of G.bombs) {
+    if (b.dead) continue;
+    glow(b.x, b.y, 46, '255,120,40', .6);
+    drawFlame(b.x, b.y + 14, 26, 44, G.t * 8 + b.seed, .95);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = 'rgba(255,235,190,.95)';
+    ctx.beginPath(); ctx.arc(b.x, b.y, 9, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawBullets() {
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (const u of G.bullets) {
+    const k = clamp(u.t / u.dur, 0, 1);
+    const hx = lerp(u.x0, u.tx, k), hy = lerp(u.y0, u.ty, k);
+    const tk = Math.max(0, k - .5);
+    const bx = lerp(u.x0, u.tx, tk), by = lerp(u.y0, u.ty, tk);
+    const g = ctx.createLinearGradient(bx, by, hx, hy);
+    g.addColorStop(0, 'rgba(255,120,40,0)');
+    g.addColorStop(1, 'rgba(255,245,210,.95)');
+    ctx.strokeStyle = g; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(hx, hy); ctx.stroke();
+    glow(hx, hy, 20, '255,210,130', .8);
+  }
+  ctx.restore();
+}
+
+function drawSuperShot() {
+  const s = G.superShot;
+  if (!s) return;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(255,190,90,.85)'; ctx.lineWidth = 8;
+  ctx.beginPath();
+  s.pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 2.5;
+  ctx.stroke();
+  const last = s.pts[s.pts.length - 1];
+  glow(last.x, last.y, 80, '255,215,140', .85);
+  ctx.restore();
+  drawSpeedLines(.45);
+}
+
+function drawCrosshair() {
+  if (G.mode !== 'play') return;
+  const a = G.aim;
+  const over = pickTarget(a.x, a.y);
+  const friendly = over && over.kind === 'civil';
+  const col = friendly ? '#8fe6ff' : over ? '#8dff8d' : '#ff9b7a';
+  const r = 18 + (G.recoil > 0 ? 7 : 0);
+  ctx.save();
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = col;
+  ctx.beginPath(); ctx.arc(a.x, a.y, r, 0, 7); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(a.x - r - 10, a.y); ctx.lineTo(a.x - r + 4, a.y);
+  ctx.moveTo(a.x + r - 4, a.y); ctx.lineTo(a.x + r + 10, a.y);
+  ctx.moveTo(a.x, a.y - r - 10); ctx.lineTo(a.x, a.y - r + 4);
+  ctx.moveTo(a.x, a.y + r - 4); ctx.lineTo(a.x, a.y + r + 10);
+  ctx.stroke();
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.arc(a.x, a.y, 2.2, 0, 7); ctx.fill();
+  ctx.textAlign = 'center';
+  if (friendly) {
+    ctx.font = '900 13px ' + FONT;
+    ctx.fillText('СВОЙ!', a.x, a.y - r - 12);
+  }
+  if (G.reload > 0) {
+    ctx.font = '900 11px ' + FONT;
+    ctx.fillStyle = '#ffd23f';
+    ctx.fillText('ПЕРЕЗАРЯДКА', a.x, a.y + r + 20);
+  }
+  ctx.restore();
+}
+
 function roundRect(x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -1692,7 +2397,7 @@ function drawHUD() {
   ctx.textAlign = 'left';
   ctx.font = '900 11px ' + FONT;
   ctx.fillStyle = G.ultReady ? '#8fe6ff' : 'rgba(255,240,210,.7)';
-  ctx.fillText('РЫЦАРСКИЙ ДУХ', sx, sy - 8);
+  ctx.fillText(G.level === 2 ? 'ЗАРЯД СУПЕР ПУЛИ' : 'РЫЦАРСКИЙ ДУХ', sx, sy - 8);
   ctx.fillStyle = 'rgba(0,0,0,.45)';
   roundRect(sx, sy, sw, 14, 7); ctx.fill();
   const t = G.spirit / 100;
@@ -1706,7 +2411,33 @@ function drawHUD() {
     ctx.fillStyle = '#062033';
     ctx.font = '900 11px ' + FONT;
     ctx.textAlign = 'center';
-    ctx.fillText(isTouch ? 'ЭКСКАЛИБУР — ЖМИ КНОПКУ' : 'ЭКСКАЛИБУР — ЖМИ E', sx + sw / 2, sy + 11);
+    const nm = G.level === 2 ? 'СУПЕР ПУЛЯ' : 'ЭКСКАЛИБУР';
+    ctx.fillText(nm + (isTouch ? ' — ЖМИ КНОПКУ' : ' — ЖМИ E'), sx + sw / 2, sy + 11);
+  }
+
+  // патроны Хинавы — над шкалой
+  if (G.level === 2) {
+    const by = sy - 48;
+    for (let i = 0; i < MAG; i++) {
+      const bx = sx + i * 15;
+      const live = i < G.ammo;
+      ctx.fillStyle = live ? '#ffd23f' : 'rgba(255,255,255,.16)';
+      roundRect(bx, by, 9, 15, 2); ctx.fill();
+      ctx.fillStyle = live ? '#ff8a2b' : 'rgba(255,255,255,.1)';
+      ctx.beginPath();
+      ctx.moveTo(bx, by + 2); ctx.lineTo(bx + 4.5, by - 4); ctx.lineTo(bx + 9, by + 2);
+      ctx.closePath(); ctx.fill();
+    }
+    if (G.reload > 0) {
+      const w = MAG * 15 - 6;
+      ctx.fillStyle = 'rgba(0,0,0,.5)';
+      roundRect(sx, by + 2, w, 11, 5); ctx.fill();
+      ctx.fillStyle = '#ffd23f';
+      roundRect(sx, by + 2, w * (1 - G.reload / 1.15), 11, 5); ctx.fill();
+      ctx.fillStyle = '#1a1020';
+      ctx.font = '900 9px ' + FONT; ctx.textAlign = 'center';
+      ctx.fillText('ПЕРЕЗАРЯДКА', sx + w / 2, by + 11);
+    }
   }
   ctx.restore();
 }
@@ -1779,23 +2510,39 @@ function render() {
   ctx.fillRect(0, hz - 150, VW, 170);
 
   drawCityLayer(cityMid, 0.32, 0, '#1d1030', 'rgba(255,210,140,.5)', true);
+
+  // огневики на крышах — поверх города, до дороги
+  if (G.level === 2) {
+    for (const t of G.targets) if (t.kind === 'roof') { drawRoofLedge(t); drawInfernal(t); }
+  }
+
   drawRoad();
 
-  // сущности — от дальней полосы к ближней
-  const ents = [];
-  for (const e of G.enemies) ents.push({ lane: e.lane, z: 0, o: e, kind: 'e' });
-  for (const o of G.obstacles) ents.push({ lane: o.lane, z: 0, o: o, kind: 'c' });
-  ents.push({ lane: G.laneF, kind: 'p' });
-  ents.sort((a, b) => a.lane - b.lane);
-  for (const it of ents) {
-    if (it.kind === 'e') drawInfernal(it.o);
-    else if (it.kind === 'c') drawCar(it.o);
-    else drawArthur();
+  if (G.level === 2) {
+    for (const t of G.targets) if (t.kind === 'civil') drawCivil(t);
+    const road = G.targets.filter(t => t.kind === 'road').sort((a, b) => a.lane - b.lane);
+    for (const t of road) if (t.lane < 1) drawInfernal(t);
+    drawHinawaRig();
+    for (const t of road) if (t.lane >= 1) drawInfernal(t);
+    drawBombs();
+  } else {
+    // сущности — от дальней полосы к ближней
+    const ents = [];
+    for (const e of G.enemies) ents.push({ lane: e.lane, z: 0, o: e, kind: 'e' });
+    for (const o of G.obstacles) ents.push({ lane: o.lane, z: 0, o: o, kind: 'c' });
+    ents.push({ lane: G.laneF, kind: 'p' });
+    ents.sort((a, b) => a.lane - b.lane);
+    for (const it of ents) {
+      if (it.kind === 'e') drawInfernal(it.o);
+      else if (it.kind === 'c') drawCar(it.o);
+      else drawArthur();
+    }
   }
 
   drawParticles();
   drawWarnings();
   drawPops();
+  if (G.level === 2) { drawBullets(); drawSuperShot(); drawCrosshair(); }
   drawUlt();
 
   // линии скорости на высоком духе
@@ -1856,7 +2603,7 @@ function frame(now) {
 }
 
 window.G = G; window.__spawn = doSpawn; window.__snd = Snd; window.__music = Music;
-window.__dbg = () => ({ VW, VH, ax: playerX() });
+window.__dbg = () => ({ VW, VH, SCALE, OY, ax: playerX() });
 layout();
 requestAnimationFrame(frame);
 
