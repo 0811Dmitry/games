@@ -24,7 +24,7 @@
   .hr{display:flex; align-items:center; justify-content:flex-end; gap:10px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap;}
   #hHearts{font-size:clamp(14px,3vw,18px); letter-spacing:1px;}
   #hScore{font-family:'Baloo 2',sans-serif; font-size:clamp(15px,3.4vw,20px);}
-  #soundBtn{width:34px; height:34px; border-radius:50%; border:none; background:#EEF3FA; font-size:16px; cursor:pointer; flex:none;}
+  #soundBtn,#fsBtn{width:34px; height:34px; border-radius:50%; border:none; background:#EEF3FA; font-size:16px; cursor:pointer; flex:none;}
   #wrap{flex:1; position:relative; min-height:0; overflow:hidden;}
   canvas{display:block; width:100%; height:100%; touch-action:none;}
   #actBtn{
@@ -64,7 +64,7 @@
 <div id="hud">
   <div id="hTitle"></div>
   <div id="hPips"><i></i><i></i><i></i></div>
-  <div class="hr"><span id="hHearts"></span><span id="hScore">⭐ 0</span><button id="soundBtn" aria-label="Звук">🔊</button></div>
+  <div class="hr"><span id="hHearts"></span><span id="hScore">⭐ 0</span><button id="soundBtn" aria-label="Звук">🔊</button><button id="fsBtn" aria-label="На весь экран">⛶</button></div>
 </div>
 <div id="wrap">
   <canvas id="c"></canvas>
@@ -230,6 +230,26 @@ soundBtn.addEventListener('click', () => {
   paintSound();
 });
 paintSound();
+
+/* ---------- полноэкранный режим ---------- */
+const fsBtn = document.getElementById('fsBtn');
+const fsEl = document.documentElement;
+const fsEnter = fsEl.requestFullscreen || fsEl.webkitRequestFullscreen || fsEl.webkitRequestFullScreen || fsEl.msRequestFullscreen;
+const fsExit = document.exitFullscreen || document.webkitExitFullscreen || document.webkitCancelFullScreen || document.msExitFullscreen;
+function fsOn(){ return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement); }
+function paintFs(){
+  const on = fsOn();
+  fsBtn.textContent = on ? '🗗' : '⛶';
+  fsBtn.setAttribute('aria-label', on ? 'Свернуть' : 'На весь экран');
+}
+if(!fsEnter){ fsBtn.hidden = true; } else {
+  fsBtn.addEventListener('click', () => {
+    try{ const r = fsOn() ? (fsExit && fsExit.call(document)) : fsEnter.call(fsEl); if(r && r.catch) r.catch(() => {}); }catch(e){}
+  });
+  ['fullscreenchange', 'webkitfullscreenchange', 'MSFullscreenChange'].forEach(ev =>
+    document.addEventListener(ev, () => { paintFs(); setTimeout(resize, 60); }));
+  paintFs();
+}
 
 /* ---------- эффекты ---------- */
 let CL = 0, shakeAmt = 0, flashA = 0, flashC = '#fff', punchAmt = 0, hitStopT = 0, timeScale = 1, slowT = 0, confettiT = 0;
